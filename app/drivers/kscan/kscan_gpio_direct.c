@@ -76,6 +76,7 @@ struct kscan_direct_config {
     struct debounce_config debounce_config;
     int32_t debounce_scan_period_ms;
     int32_t poll_period_ms;
+    bool toggle_mode;
 };
 
 #if USE_INTERRUPTS
@@ -123,6 +124,31 @@ static void kscan_direct_irq_callback_handler(const struct device *port, struct 
     k_work_reschedule(&data->work, K_NO_WAIT);
 }
 #endif
+
+static gpio_flags_t kscan_gpio_get_extra_flags(const struct gpio_dt_spec *gpio, bool active) {
+    if (!active) {
+        return ((BIT(0) & gpio->dt_flags) ? GPIO_PULL_UP : GPIO_PULL_DOWN);
+    }
+    return 0;
+}
+
+static int kscan_inputs_set_flags(const struct kscan_gpio_list *inputs,
+                                  const struct gpio_dt_spec *active_gpio) {
+    gpio_flags_t extra_flags;
+    for (int i = 0; i < inputs->len; i++) {
+        extra_flags = GPIO_INPUT | kscan_gpio_get_extra_flags(&inputs->gpios[i],
+                                                              &inputs->gpios[i] == active_gpio);
+        LOG_DBG("Extra flags equal to: %d", extra_flags);
+
+        int err = gpio_pin_configure_dt(&inputs->gpios[i], extra_flags);
+        if (err) {
+            LOG_ERR("Unable to configure flags on pin %d on %s", inputs->gpios[i].pin,
+                    inputs->gpios[i].port->name);
+            return err;
+        }
+    }
+    return 0;
+}
 
 static void kscan_direct_read_continue(const struct device *dev) {
     const struct kscan_direct_config *config = dev->config;
@@ -173,6 +199,9 @@ static int kscan_direct_read(const struct device *dev) {
 
             LOG_DBG("Sending event at 0,%i state %s", i, pressed ? "on" : "off");
             data->callback(dev, 0, i, pressed);
+            if (config->toggle_mode && pressed) {
+                kscan_inputs_set_flags(&config->inputs, &config->inputs.gpios[i]);
+            }
         }
 
         continue_scan = continue_scan || debounce_is_active(state);
@@ -229,13 +258,13 @@ static int kscan_direct_disable(const struct device *dev) {
 }
 
 static int kscan_direct_init_input_inst(const struct device *dev, const struct gpio_dt_spec *gpio,
-                                        const int index) {
+                                        const int index, bool toggle_mode) {
     if (!device_is_ready(gpio->port)) {
         LOG_ERR("GPIO is not ready: %s", gpio->port->name);
         return -ENODEV;
     }
-
-    int err = gpio_pin_configure_dt(gpio, GPIO_INPUT);
+    int err = gpio_pin_configure_dt(
+        gpio, GPIO_INPUT | (toggle_mode ? kscan_gpio_get_extra_flags(gpio, false) : 0));
     if (err) {
         LOG_ERR("Unable to configure pin %u on %s for input", gpio->pin, gpio->port->name);
         return err;
@@ -264,7 +293,7 @@ static int kscan_direct_init_inputs(const struct device *dev) {
 
     for (int i = 0; i < config->inputs.len; i++) {
         const struct gpio_dt_spec *gpio = &config->inputs.gpios[i];
-        int err = kscan_direct_init_input_inst(dev, gpio, i);
+        int err = kscan_direct_init_input_inst(dev, gpio, i, config->toggle_mode);
         if (err) {
             return err;
         }
@@ -317,6 +346,7 @@ static const struct kscan_driver_api kscan_direct_api = {
             },                                                                                     \
         .debounce_scan_period_ms = DT_INST_PROP(n, debounce_scan_period_ms),                       \
         .poll_period_ms = DT_INST_PROP(n, poll_period_ms),                                         \
+        .toggle_mode = DT_INST_PROP(n, toggle_mode),                                               \
     };                                                                                             \
                                                                                                    \
     DEVICE_DT_INST_DEFINE(n, &kscan_direct_init, NULL, &kscan_direct_data_##n,                     \
