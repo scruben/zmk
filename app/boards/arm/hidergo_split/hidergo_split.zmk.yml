@@ -1,6 +1,6 @@
 file_format: "1"
-id: hidergo_split_left_52833
-name: Split (L)
+id: hidergo_split_52833
+name: Split
 type: board
 arch: arm
 outputs:

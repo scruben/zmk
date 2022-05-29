@@ -7,9 +7,9 @@
 
 /{
 
-    /*chosen {
-        //zmk,mouse = &trackpad;
-    };*/
+    chosen {
+        zmk,mouse = &trackpad;
+    };
 
     kscan0: kscan {
         compatible = "zmk,kscan-gpio-matrix";
@@ -56,19 +56,23 @@
 &right_encoder {
     status = "okay";
 };
-/*
+ 
 &i2c0 {
-    status = "okay";
-    trackpad: trackpad@74 {
+	compatible = "nordic,nrf-twi";
+	sda-pin = <17>;
+	scl-pin = <20>;
+
+	status = "okay";
+
+	trackpad: trackpad@74 {
         compatible = "azoteq,iqs5xx";
         label = "AZOTEQ_IQS5XX";
         status = "okay";
         reg = <0x74>;
         dr-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
-    };
+	};
 };
- */
-/*
+
 &spi2 {
     status = "okay";
     compatible = "nordic,nrf-spim";
@@ -93,4 +97,4 @@
         tcon = <0x22>;
     };
 };
- */
+

@@ -355,7 +355,7 @@ static const struct iqs5xx_config iqs5xx_config = {
     .dr_flags = DT_INST_GPIO_FLAGS(0, dr_gpios),
 };
 
-DEVICE_DT_INST_DEFINE(0, iqs5xx_init, device_pm_control_nop, &iqs5xx_data, &iqs5xx_config,
+DEVICE_DT_INST_DEFINE(0, iqs5xx_init, NULL, &iqs5xx_data, &iqs5xx_config,
                       POST_KERNEL, 90, &iqs5xx_driver_api);
 					  
 K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(10), 0, 0);
