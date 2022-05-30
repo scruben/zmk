@@ -79,20 +79,20 @@
 			label = "mbr";
 			reg = <0x0000000 0x00001000>;
 		};
-
+		/* 
 		sd_partition: partition@1000 {
 			label = "softdevice";
 			reg = <0x0001000 0x00025000>;
-		};
-		code_partition: partition@26000 {
-			label = "code_partition";
-			reg = <0x00026000 0x00046000>;
-		};
+		};*/
+		code_partition: partition@1000 {
+            label = "code_partition";
+            reg = <0x0001000 0x0006F000>;
+        };
 
-		storage_partition: partition@6C000 {
-			label = "storage";
-			reg = <0x0006C000 0x00008000>;
-		};
+        storage_partition: partition@70000 {
+            label = "storage";
+            reg = <0x00070000 0x00004000>;
+        };
 
 		boot_partition: partition@74000 {
 			label = "adafruit_boot";

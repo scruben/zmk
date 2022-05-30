@@ -1,13 +1,34 @@
 # Copyright (c) 2021 The ZMK Contributors
 # SPDX-License-Identifier: MIT
 
-if BOARD_HIDERGO_SPLIT
+if BOARD_HIDERGO_SPLIT_LEFT || BOARD_HIDERGO_SPLIT_RIGHT
 
 config BOARD
 	default "hidergo_split"
 
 config USB_NRFX
 	default y
+
+# DISPLAY
+
+config ZMK_DISPLAY
+	select LVGL_USE_CONT
+	select LVGL_FONT_MONTSERRAT_26
+	select LVGL_FONT_MONTSERRAT_20
+	select LVGL_FONT_MONTSERRAT_16
+	select LVGL_USE_LABEL
+	select LVGL_USE_IMG
+
+if ZMK_DISPLAY
+
+config SPI
+	default y
+
+config IL0323
+	bool
+	default y
+
+endif # ZMK_DISPLAY
 
 # Enable UART driver, needed for CDC ACM
 config USB_CDC_ACM
@@ -22,4 +43,4 @@ config ZMK_BLE
 config ZMK_USB
 	default y
 
-endif # BOARD_HIDERGO_SPLIT
+endif # BOARD_HIDERGO_SPLIT_LEFT || BOARD_HIDERGO_SPLIT_RIGHT

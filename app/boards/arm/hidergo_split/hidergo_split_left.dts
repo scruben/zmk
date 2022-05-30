@@ -7,10 +7,6 @@
 
 /{
 
-    chosen {
-        zmk,mouse = &trackpad;
-    };
-
     kscan0: kscan {
         compatible = "zmk,kscan-gpio-matrix";
         label = "KSCAN";
@@ -38,7 +34,7 @@
         , <&gpio0 4 GPIO_ACTIVE_HIGH> // Col 5 in the schematic
         ;
     };
-    right_encoder: encoder_right {
+    left_encoder: encoder_left {
         compatible = "alps,ec11";
         label = "RIGHT_ENCODER";
         a-gpios = <&gpio0 15 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
@@ -48,29 +44,13 @@
 
     sensors {
         compatible = "zmk,keymap-sensors";
-        sensors = <&right_encoder>;
+        sensors = <&left_encoder>;
     };
 };
 
 
-&right_encoder {
+&left_encoder {
     status = "okay";
-};
- 
-&i2c0 {
-	compatible = "nordic,nrf-twi";
-	sda-pin = <17>;
-	scl-pin = <20>;
-
-	status = "okay";
-
-	trackpad: trackpad@74 {
-        compatible = "azoteq,iqs5xx";
-        label = "AZOTEQ_IQS5XX";
-        status = "okay";
-        reg = <0x74>;
-        dr-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
-	};
 };
 
 &spi2 {
@@ -78,7 +58,7 @@
     compatible = "nordic,nrf-spim";
     sck-pin = <22>;
     mosi-pin = <24>;
-    miso-pin = <23>;
+    miso-pin = <32>;
     cs-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
 
     epd: il0323@0 {
