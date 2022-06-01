@@ -11,24 +11,24 @@ config USB_NRFX
 
 # DISPLAY
 
-config ZMK_DISPLAY
-	select LVGL_USE_CONT
-	select LVGL_FONT_MONTSERRAT_26
-	select LVGL_FONT_MONTSERRAT_20
-	select LVGL_FONT_MONTSERRAT_16
-	select LVGL_USE_LABEL
-	select LVGL_USE_IMG
-
-if ZMK_DISPLAY
-
-config SPI
-	default y
-
-config IL0323
-	bool
-	default y
-
-endif # ZMK_DISPLAY
+#config ZMK_DISPLAY
+#	select LVGL_USE_CONT
+#	select LVGL_FONT_MONTSERRAT_26
+#	select LVGL_FONT_MONTSERRAT_20
+#	select LVGL_FONT_MONTSERRAT_16
+#	select LVGL_USE_LABEL
+#	select LVGL_USE_IMG
+#
+#if ZMK_DISPLAY
+#
+#config SPI
+#	default y
+#
+#config IL0323
+#	bool
+#	default y
+#
+#endif # ZMK_DISPLAY
 
 # Enable UART driver, needed for CDC ACM
 config USB_CDC_ACM
@@ -42,5 +42,16 @@ config ZMK_BLE
 
 config ZMK_USB
 	default y
+
+# FOR DEBUGGING
+config ZMK_LOG_LEVEL
+	int
+	default 1
+
+# FOR DEBUGGING
+config DISPLAY_LOG_LEVEL
+	int
+	default 1
+
 
 endif # BOARD_HIDERGO_SPLIT_LEFT || BOARD_HIDERGO_SPLIT_RIGHT

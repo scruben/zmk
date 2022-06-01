@@ -73,13 +73,13 @@
 	};
 };
 
-&spi2 {
+&spi1 {
     status = "okay";
     compatible = "nordic,nrf-spim";
     sck-pin = <22>;
     mosi-pin = <24>;
     miso-pin = <23>;
-    cs-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+    cs-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
 
     epd: il0323@0 {
         compatible = "gooddisplay,il0323";
@@ -87,8 +87,9 @@
         label = "DISPLAY";
         width = <80>;
         height = <128>;
-        spi-max-frequency = <4000000>;
-        dc-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
+        status = "okay";
+        spi-max-frequency = <125000>;
+        dc-gpios = <&gpio0 9 GPIO_ACTIVE_LOW>;
         busy-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
         reset-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
         pwr = [ 03 00 26 26  ];
@@ -97,4 +98,3 @@
         tcon = <0x22>;
     };
 };
-
