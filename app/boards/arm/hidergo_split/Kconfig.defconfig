@@ -6,6 +6,9 @@ if BOARD_HIDERGO_SPLIT_LEFT || BOARD_HIDERGO_SPLIT_RIGHT
 config BOARD
 	default "hidergo_split"
 
+config ZMK_KEYBOARD_NAME
+	default "hid:ergo split"
+
 config USB_NRFX
 	default y
 
@@ -18,6 +21,7 @@ config ZMK_DISPLAY
 	select LVGL_FONT_MONTSERRAT_16
 	select LVGL_USE_LABEL
 	select LVGL_USE_IMG
+
 if ZMK_DISPLAY
 
 config SPI

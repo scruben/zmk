@@ -265,7 +265,6 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
 	ARG_UNUSED(unused3);
     struct iqs5xx_data *data = dev->data;
     struct iqs5xx_config *conf = dev->config;
-    bool dr_state = false;
     while (1) {     
         
         if (k_sem_take(&data->gpio_sem, Z_TIMEOUT_MS(1000)) != 0) {
@@ -326,7 +325,7 @@ static int iqs5xx_init(const struct device *dev) {
         return -EIO;
     }
 
-    k_sem_init(&data->gpio_sem, 1, UINT_MAX);
+    k_sem_init(&data->gpio_sem, 0, UINT_MAX);
 	//K_THREAD_DEFINE(trackpad_thread, 1024, iqs5xx_thread,
     //                data->dev,  NULL, NULL, K_PRIO_COOP(10), 0, 0);
 		
