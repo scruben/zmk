@@ -21,6 +21,9 @@
 // DT_DRV_INST(0);
 LOG_MODULE_REGISTER(azoteq_iqs5xx, 1);
 
+// IQS5XX data ready pin trigger
+static struct sensor_trigger trig;
+
 /**
  * @brief Read from the iqs550 chip via i2c
  * example: iqs5xx_seq_read(dev, GestureEvents0_adr, buffer, 44)
@@ -36,7 +39,8 @@ static int iqs5xx_seq_read(const struct device *dev, const uint16_t start, uint8
     LOG_ERR("\nseq read iqs5xx");
     const struct iqs5xx_data *data = dev->data;
     const struct iqs5xx_config *config = dev->config;
-    return i2c_write_read(data->i2c, AZOTEQ_IQS5XX_ADDR, &start, sizeof(start), read_buf, len);
+    uint16_t nstart = (start << 8 ) | (start >> 8);
+    return i2c_write_read(data->i2c, AZOTEQ_IQS5XX_ADDR, &nstart, sizeof(nstart), read_buf, len);
 }
 
 /**
@@ -110,7 +114,7 @@ static int iqs5xx_channel_get(const struct device *dev, enum sensor_channel chan
     return 0;
 }
 
-static int iqs5xx_sample_fetch(const struct device *dev, enum sensor_channel chan) {
+static int iqs5xx_sample_fetch(const struct device *dev) {
     LOG_ERR("\nSAMPLE FETCH");
 
     uint8_t buffer[44];
@@ -203,6 +207,12 @@ static int iqs5xx_sample_fetch(const struct device *dev, enum sensor_channel cha
     data->ax = d.ui16AbsX[1];
     data->ay = d.ui16AbsY[1];
     data->gesture = d.gesture;
+    
+    /*
+    for(int i = 0; i < 44; i++) {
+        LOG_ERR("0x%X\r\n", buffer[i]);
+    }
+    */
 
     return 0;
 }
@@ -256,6 +266,8 @@ static void iqs5xx_int_cb(const struct device *dev) {
     set_int(dev, true);
 }
 
+static int dr_state = 0;
+
 static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
 	LOG_ERR("\nSTART THREAD FUNCTION");
     const struct device *dev = arg;
@@ -265,8 +277,12 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
 	ARG_UNUSED(unused3);
     struct iqs5xx_data *data = dev->data;
     struct iqs5xx_config *conf = dev->config;
+
+    uint8_t buffer[44];
+    memset(buffer, 0, 44);
+
     while (1) {     
-        
+        /*
         if (k_sem_take(&data->gpio_sem, Z_TIMEOUT_MS(1000)) != 0) {
             LOG_ERR("NO INPUT DATA AVAILABLE");
         }
@@ -274,7 +290,25 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
             iqs5xx_int_cb(dev);
 		    k_sem_give(&data->gpio_sem);
         }
-        
+        */
+        k_sleep(K_MSEC(10));
+        int nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
+        if(nstate != dr_state) {
+            //LOG_ERR("DR STATE CHANGED TO %i\r\n", nstate);
+            dr_state = nstate;
+        }
+
+        if(dr_state) {
+            
+            //int res = iqs5xx_seq_read(dev, 0x00, buffer, 44);
+	        //iqs5xx_write(dev, END_WINDOW, 0, 1);
+
+            //LOG_ERR("\n PJN: 0x%X 0x%X PDN: 0x%X 0x%X VMIN: 0x%X VMAJ: 0x%X\r\n", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+            //LOG_ERR("\n NF: %i TX: %i TY: %i\r\n", buffer[11], ((buffer[12] << 8) | buffer[13]), ((buffer[14] << 8) | buffer[15]));
+            iqs5xx_sample_fetch(dev);
+
+            k_sleep(K_MSEC(1000));
+        }
         
          
     }
@@ -285,6 +319,10 @@ static void iqs5xx_gpio_cb(const struct device *port, struct gpio_callback *cb, 
     struct iqs5xx_data *data = CONTAINER_OF(cb, struct iqs5xx_data, gpio_cb);
     const struct device *dev = data->dev;
     k_sem_give(&data->gpio_sem);
+}
+
+static void iqs5xx_dr_trig_handler(const struct device *dev, const struct sensor_trigger *trig) {
+    LOG_ERR("\nTRIG_HANDLER");
 }
 
 //#define I2C_BUS DT_BUS(DT_NODELABEL(trackpad))
@@ -326,6 +364,14 @@ static int iqs5xx_init(const struct device *dev) {
     }
 
     k_sem_init(&data->gpio_sem, 0, UINT_MAX);
+
+
+    // Setup trigger
+    trig.chan = SENSOR_CHAN_ALL;
+    trig.type = SENSOR_TRIG_DATA_READY;
+
+    sensor_trigger_set(config->dr_port, &trig, iqs5xx_dr_trig_handler);
+
 	//K_THREAD_DEFINE(trackpad_thread, 1024, iqs5xx_thread,
     //                data->dev,  NULL, NULL, K_PRIO_COOP(10), 0, 0);
 		
