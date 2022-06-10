@@ -36,7 +36,6 @@ static struct sensor_trigger trig;
  */
 static int iqs5xx_seq_read(const struct device *dev, const uint16_t start, uint8_t *read_buf,
                            const uint8_t len) {
-    LOG_ERR("\nseq read iqs5xx");
     const struct iqs5xx_data *data = dev->data;
     const struct iqs5xx_config *config = dev->config;
     uint16_t nstart = (start << 8 ) | (start >> 8);
@@ -55,10 +54,7 @@ static int iqs5xx_seq_read(const struct device *dev, const uint16_t start, uint8
 static int iqs5xx_write(const struct device *dev, const uint16_t start_addr, uint8_t *buf,
                         uint32_t num_bytes) {
 
-    LOG_ERR("\nwrite iqs5xx");
     const struct iqs5xx_data *data = dev->data;
-    
-    LOG_ERR("\nwrite iqs5xx");
 
     uint8_t addr_buffer[2];
     struct i2c_msg msg[2];
@@ -74,7 +70,6 @@ static int iqs5xx_write(const struct device *dev, const uint16_t start_addr, uin
     msg[1].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
 
     int err = i2c_transfer(data->i2c, msg, 2, AZOTEQ_IQS5XX_ADDR);
-    LOG_ERR("\n%d", err);
     return err;
 }
 
@@ -114,8 +109,9 @@ static int iqs5xx_channel_get(const struct device *dev, enum sensor_channel chan
     return 0;
 }
 
+
 static int iqs5xx_sample_fetch(const struct device *dev) {
-    LOG_ERR("\nSAMPLE FETCH");
+    //LOG_ERR("\nSAMPLE FETCH");
 
     uint8_t buffer[44];
     int res = iqs5xx_seq_read(dev, GestureEvents0_adr, buffer, 44);
@@ -166,7 +162,7 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
             d.gesture = SWIPE_Y_NEG;
             break;
         }
-        LOG_ERR("\nGESTURE %d", d.gesture);
+        //LOG_ERR("\nGESTURE %d", d.gesture);
         // gesture bank 2
         switch (buffer[1]) {
         case TWO_FINGER_TAP:
@@ -184,8 +180,8 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
 
         d.i16RelX[1] = ((buffer[5] << 8) | (buffer[6]));
         d.i16RelY[1] = ((buffer[7] << 8) | (buffer[8]));
-        LOG_ERR("\nX %d", d.i16RelX[1]);
-        LOG_ERR("\nY %d", d.i16RelY[1]);
+        //LOG_ERR("\nX %d", d.i16RelX[1]);
+        //LOG_ERR("\nY %d", d.i16RelY[1]);
 
         // calculate absolute position of max 5 fingers
 
@@ -207,6 +203,16 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     data->ax = d.ui16AbsX[1];
     data->ay = d.ui16AbsY[1];
     data->gesture = d.gesture;
+
+    /*
+    // TODO: mouse 1 stays down if this is enabled, needs a timer for release
+    if(d.gesture & SINGLE_TAP) {
+        zmk_hid_mouse_button_press(0);
+    }
+    else */if(d.ui8NoOfFingers > 0) {
+        zmk_hid_mouse_movement_set(-data->ry, data->rx);
+        zmk_endpoints_send_mouse_report();
+    }
     
     /*
     for(int i = 0; i < 44; i++) {
@@ -291,7 +297,7 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
 		    k_sem_give(&data->gpio_sem);
         }
         */
-        k_sleep(K_MSEC(10));
+        k_sleep(K_MSEC(8));
         int nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
         if(nstate != dr_state) {
             //LOG_ERR("DR STATE CHANGED TO %i\r\n", nstate);
@@ -306,8 +312,6 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
             //LOG_ERR("\n PJN: 0x%X 0x%X PDN: 0x%X 0x%X VMIN: 0x%X VMAJ: 0x%X\r\n", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
             //LOG_ERR("\n NF: %i TX: %i TY: %i\r\n", buffer[11], ((buffer[12] << 8) | buffer[13]), ((buffer[14] << 8) | buffer[15]));
             iqs5xx_sample_fetch(dev);
-
-            k_sleep(K_MSEC(1000));
         }
         
          
@@ -335,8 +339,8 @@ static int iqs5xx_init(const struct device *dev) {
 
     data->dev = dev;
 
-	uint8_t activeRefreshRate[2] = {0, 8};
-    uint8_t idleRefreshRate[2] = {0, 16};
+	uint8_t activeRefreshRate[2] = {0, 32};
+    uint8_t idleRefreshRate[2] = {0, 64};
     uint8_t stop = 1;
 	iqs5xx_write(dev, ActiveRR_adr, &activeRefreshRate[0], 2);
 	 LOG_ERR("\nactiverr\n");
@@ -350,6 +354,8 @@ static int iqs5xx_init(const struct device *dev) {
 	LOG_ERR("\nactiverr2\n");
     iqs5xx_write(dev, END_WINDOW, 0, 1);
 	LOG_ERR("\nend_window3\n");
+    uint8_t h = 0xFF;
+    iqs5xx_write(dev, 0x06B7, &h, 1);
 	uint8_t buffer[44];
     int res = iqs5xx_seq_read(dev, GestureEvents0_adr, buffer, 44);
 	LOG_ERR("\n READ DATA %d", ((buffer[5] << 8) | (buffer[6])));

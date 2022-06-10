@@ -1,7 +1,9 @@
 {
   "files.associations": {
     "*.overlay": "dts",
-    "sensor.h": "c"
+    "sensor.h": "c",
+    "init.h": "c",
+    "hid.h": "c"
   },
   "python.formatting.provider": "black"
 }
