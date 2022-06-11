@@ -26,8 +26,8 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     struct iqs5xx_reg_config regconf;
     regconf.activeRefreshRate =         8;
     regconf.idleRefreshRate =           32;
-    regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
-    regconf.multiFingerGestureMask =    0;
+    regconf.singleFingerGestureMask =   SINGLE_TAP | TAP_AND_HOLD;
+    regconf.multiFingerGestureMask =    TWO_FINGER_TAP;
 
     return regconf;
 }
@@ -117,13 +117,21 @@ static int iqs5xx_channel_get(const struct device *dev, enum sensor_channel chan
     return 0;
 }
 
+// One finger tap release timer
 struct k_timer tap_release_timer;
 void tap_release_handler(struct k_timer *timer) {
     zmk_hid_mouse_button_release(0);
     zmk_endpoints_send_mouse_report();
 }
-
 K_TIMER_DEFINE(tap_release_timer, tap_release_handler, NULL);
+
+// Two finger tap release timer
+struct k_timer multifinger_tap_release_timer;
+void multifinger_tap_release_handler(struct k_timer *timer) {
+    zmk_hid_mouse_button_release(1);
+    zmk_endpoints_send_mouse_report();
+}
+K_TIMER_DEFINE(multifinger_tap_release_timer, multifinger_tap_release_handler, NULL);
 
 
 static int iqs5xx_sample_fetch(const struct device *dev) {
@@ -176,11 +184,11 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
         ui8FirstTouch = 0;
     }
 
+    uint8_t multiTouchGesture = 0;
     // gesture bank 1
     d.gesture = buffer[0];
     // gesture bank 2
-    if(buffer[1] > 0)
-        d.gesture = buffer[1];
+    multiTouchGesture = buffer[1];
 
 
     // set data to device data portion
@@ -192,7 +200,14 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
 
     bool inputChanged = false;
 
-    if(d.gesture & GESTURE_SINGLE_TAP) {
+    if(multiTouchGesture & TWO_FINGER_TAP) {
+        // Two finger tap/right click
+        zmk_hid_mouse_button_press(1);
+        inputChanged = true;
+        k_timer_start(&multifinger_tap_release_timer, K_MSEC(50), K_NO_WAIT);
+    }
+    else if(d.gesture & SINGLE_TAP) {
+        // One finger tap/left click
         zmk_hid_mouse_button_press(0);
         inputChanged = true;
         k_timer_start(&tap_release_timer, K_MSEC(50), K_NO_WAIT);

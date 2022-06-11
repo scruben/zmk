@@ -51,21 +51,6 @@ __subsystem struct iqs5xx_sensor_driver_api {
 };
 
 
-// Gestures
-#define GESTURE_SINGLE_TAP      0b000001
-#define GESTURE_TAP_AND_HOLD    0b000010
-#define GESTURE_SWIPE_XN        0b000100
-#define GESTURE_SWIPE_XP        0b001000
-#define GESTURE_SWIPE_YN        0b010000
-#define GESTURE_SWIPE_YP        0b100000
-#define GESTURE_SINGLE_ALL      0b111111
-
-#define GESTURE_2_FINGER_TAP    0b001
-#define GESTURE_SCROLL          0b010
-#define GESTURE_ZOOM            0b100
-#define GESTURE_MULTI_ALL       0b111
-
-
 // Register configuration structure
 struct iqs5xx_reg_config {
     // Refresh rate when the device is active (ms interval)
