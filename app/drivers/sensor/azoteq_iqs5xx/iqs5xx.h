@@ -51,6 +51,42 @@ __subsystem struct iqs5xx_sensor_driver_api {
 };
 
 
+// Gestures
+#define GESTURE_SINGLE_TAP      0b000001
+#define GESTURE_TAP_AND_HOLD    0b000010
+#define GESTURE_SWIPE_XN        0b000100
+#define GESTURE_SWIPE_XP        0b001000
+#define GESTURE_SWIPE_YN        0b010000
+#define GESTURE_SWIPE_YP        0b100000
+#define GESTURE_SINGLE_ALL      0b111111
+
+#define GESTURE_2_FINGER_TAP    0b001
+#define GESTURE_SCROLL          0b010
+#define GESTURE_ZOOM            0b100
+#define GESTURE_MULTI_ALL       0b111
+
+
+// Register configuration structure
+struct iqs5xx_reg_config {
+    // Refresh rate when the device is active (ms interval)
+    uint16_t    activeRefreshRate;
+    // Refresh rate when the device is idling (ms interval)
+    uint16_t    idleRefreshRate;
+    // Which single finger gestures will be enabled
+    uint8_t     singleFingerGestureMask;
+    // Which multi finger gestures will be enabled
+    uint8_t     multiFingerGestureMask;
+};
+
+// Returns the default register configuration
+struct iqs5xx_reg_config iqs5xx_reg_config_default ();
+
+// Byte swap macros
+#define SWPEND16(n) ((n >> 8) | (n << 8))
+#define SWPEND32(n) ( ((n >> 24) & 0x000000FF) | ((n >>  8) & 0x0000FF00) | \
+                        ((n << 8) & 0x00FF0000) | ((n << 24) & 0xFF000000) ) 
+
+
 #define AZOTEQ_IQS5XX_ADDR      0x74
 
 //*****************************************************************************

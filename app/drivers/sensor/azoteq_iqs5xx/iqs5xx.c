@@ -19,10 +19,18 @@
 #include <devicetree.h>
 
 // DT_DRV_INST(0);
-LOG_MODULE_REGISTER(azoteq_iqs5xx, 1);
+LOG_MODULE_REGISTER(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 
-// IQS5XX data ready pin trigger
-static struct sensor_trigger trig;
+// Default config
+struct iqs5xx_reg_config iqs5xx_reg_config_default () {
+    struct iqs5xx_reg_config regconf;
+    regconf.activeRefreshRate =         8;
+    regconf.idleRefreshRate =           32;
+    regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
+    regconf.multiFingerGestureMask =    0;
+
+    return regconf;
+}
 
 /**
  * @brief Read from the iqs550 chip via i2c
@@ -109,6 +117,14 @@ static int iqs5xx_channel_get(const struct device *dev, enum sensor_channel chan
     return 0;
 }
 
+struct k_timer tap_release_timer;
+void tap_release_handler(struct k_timer *timer) {
+    zmk_hid_mouse_button_release(0);
+    zmk_endpoints_send_mouse_report();
+}
+
+K_TIMER_DEFINE(tap_release_timer, tap_release_handler, NULL);
+
 
 static int iqs5xx_sample_fetch(const struct device *dev) {
     //LOG_ERR("\nSAMPLE FETCH");
@@ -141,50 +157,12 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
         if (!(ui8FirstTouch)) {
             ui8FirstTouch = 1;
         }
-        // gesture bank 1
-        switch (buffer[0]) {
-        case SINGLE_TAP:
-            d.gesture = SINGLE_TAP;
-            break;
-        case TAP_AND_HOLD:
-            d.gesture = TAP_AND_HOLD;
-            break;
-        case SWIPE_X_NEG:
-            d.gesture = SWIPE_X_NEG;
-            break;
-        case SWIPE_X_POS:
-            d.gesture = SWIPE_X_POS;
-            break;
-        case SWIPE_Y_POS:
-            d.gesture = SWIPE_Y_POS;
-            break;
-        case SWIPE_Y_NEG:
-            d.gesture = SWIPE_Y_NEG;
-            break;
-        }
-        //LOG_ERR("\nGESTURE %d", d.gesture);
-        // gesture bank 2
-        switch (buffer[1]) {
-        case TWO_FINGER_TAP:
-            d.gesture = TWO_FINGER_TAP;
-            break;
-        case SCROLLG:
-            d.gesture = SCROLLG;
-            break;
-        case ZOOM:
-            d.gesture = ZOOM;
-            break;
-        }
-
+        
         // calculate relative data
-
         d.i16RelX[1] = ((buffer[5] << 8) | (buffer[6]));
         d.i16RelY[1] = ((buffer[7] << 8) | (buffer[8]));
-        //LOG_ERR("\nX %d", d.i16RelX[1]);
-        //LOG_ERR("\nY %d", d.i16RelY[1]);
 
         // calculate absolute position of max 5 fingers
-
         for (i = 0; i < 5; i++) {
             d.ui16AbsX[i + 1] = ((buffer[(7 * i) + 9] << 8) |
                                  (buffer[(7 * i) + 10])); // 9-16-23-30-37//10-17-24-31-38
@@ -197,6 +175,14 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     } else {
         ui8FirstTouch = 0;
     }
+
+    // gesture bank 1
+    d.gesture = buffer[0];
+    // gesture bank 2
+    if(buffer[1] > 0)
+        d.gesture = buffer[1];
+
+
     // set data to device data portion
     data->rx = (int16_t)(int8_t)d.i16RelX[1];
     data->ry = (int16_t)(int8_t)d.i16RelY[1];
@@ -204,21 +190,21 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     data->ay = d.ui16AbsY[1];
     data->gesture = d.gesture;
 
-    /*
-    // TODO: mouse 1 stays down if this is enabled, needs a timer for release
-    if(d.gesture & SINGLE_TAP) {
+    bool inputChanged = false;
+
+    if(d.gesture & GESTURE_SINGLE_TAP) {
         zmk_hid_mouse_button_press(0);
+        inputChanged = true;
+        k_timer_start(&tap_release_timer, K_MSEC(50), K_NO_WAIT);
     }
-    else */if(d.ui8NoOfFingers > 0) {
+    else if(d.ui8NoOfFingers > 0) {
         zmk_hid_mouse_movement_set(-data->ry, data->rx);
+        inputChanged = true;
+    }
+
+    if(inputChanged) {
         zmk_endpoints_send_mouse_report();
     }
-    
-    /*
-    for(int i = 0; i < 44; i++) {
-        LOG_ERR("0x%X\r\n", buffer[i]);
-    }
-    */
 
     return 0;
 }
@@ -266,125 +252,81 @@ static int iqs5xx_trigger_set(const struct device *dev, const struct sensor_trig
     return 0;
 }
 
-static void iqs5xx_int_cb(const struct device *dev) {
-    struct iqs5xx_data *data = dev->data;
-    data->data_ready_handler(dev, data->data_ready_trigger);
-    set_int(dev, true);
-}
-
-static int dr_state = 0;
-
 static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
-	LOG_ERR("\nSTART THREAD FUNCTION");
     const struct device *dev = arg;
-	LOG_ERR("\nPAST DEVICE DEFINITION");
-
 	ARG_UNUSED(unused2);
 	ARG_UNUSED(unused3);
     struct iqs5xx_data *data = dev->data;
     struct iqs5xx_config *conf = dev->config;
+    int nstate = 0;
 
-    uint8_t buffer[44];
-    memset(buffer, 0, 44);
-
-    while (1) {     
-        /*
-        if (k_sem_take(&data->gpio_sem, Z_TIMEOUT_MS(1000)) != 0) {
-            LOG_ERR("NO INPUT DATA AVAILABLE");
-        }
-        else {
-            iqs5xx_int_cb(dev);
-		    k_sem_give(&data->gpio_sem);
-        }
-        */
+    while (1) {
         k_sleep(K_MSEC(8));
-        int nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
-        if(nstate != dr_state) {
-            //LOG_ERR("DR STATE CHANGED TO %i\r\n", nstate);
-            dr_state = nstate;
-        }
 
-        if(dr_state) {
-            
-            //int res = iqs5xx_seq_read(dev, 0x00, buffer, 44);
-	        //iqs5xx_write(dev, END_WINDOW, 0, 1);
+        // Poll data ready pin
+        nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
 
-            //LOG_ERR("\n PJN: 0x%X 0x%X PDN: 0x%X 0x%X VMIN: 0x%X VMAJ: 0x%X\r\n", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-            //LOG_ERR("\n NF: %i TX: %i TY: %i\r\n", buffer[11], ((buffer[12] << 8) | buffer[13]), ((buffer[14] << 8) | buffer[15]));
+        if(nstate) {
+            // Fetch the sample
             iqs5xx_sample_fetch(dev);
         }
-        
-         
     }
 }
 
-static void iqs5xx_gpio_cb(const struct device *port, struct gpio_callback *cb, uint32_t pins) {
-    LOG_ERR("\nGPIO_CB");
-    struct iqs5xx_data *data = CONTAINER_OF(cb, struct iqs5xx_data, gpio_cb);
-    const struct device *dev = data->dev;
-    k_sem_give(&data->gpio_sem);
+/**
+ * @brief Sets registers to initial values
+ * 
+ * @param dev 
+ * @return >0 if error
+ */
+static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config) {
+    // TODO: Retry if error on write
+    
+    int err = 0;
+
+    // 16 or 32 bit values must be swapped to big endian
+    uint8_t wbuff[16];
+
+    // Set active refresh rate
+    *((uint16_t*)wbuff) = SWPEND16(config->activeRefreshRate);
+    err |= iqs5xx_write(dev, ActiveRR_adr, wbuff, 2);
+    k_usleep(100);
+    // Set idle refresh rate
+    *((uint16_t*)wbuff) = SWPEND16(config->idleRefreshRate);
+    err |= iqs5xx_write(dev, IdleRR_adr, wbuff, 2);
+    k_usleep(100);
+
+    // Set single finger gestures
+    err |= iqs5xx_write(dev, SFGestureEnable_adr, &config->singleFingerGestureMask, 2);
+    k_usleep(100);
+    // Set multi finger gestures
+    err |= iqs5xx_write(dev, MFGestureEnable_adr, &config->multiFingerGestureMask, 2);
+    k_usleep(100);
+
+    // Terminate transaction
+    iqs5xx_write(dev, END_WINDOW, 0, 1);
+
+    return err;
 }
 
-static void iqs5xx_dr_trig_handler(const struct device *dev, const struct sensor_trigger *trig) {
-    LOG_ERR("\nTRIG_HANDLER");
-}
-
-//#define I2C_BUS DT_BUS(DT_NODELABEL(trackpad))
-//#define I2C_REG DT_REG_ADDR(DT_NODELABEL(trackpad))
 K_THREAD_STACK_DEFINE(thread_stack, 2000);
 static int iqs5xx_init(const struct device *dev) {
-    LOG_ERR("\nstarting trackpad INIT\n");
+    LOG_DBG("IQS5xx INIT\r\n");
     struct iqs5xx_data *data = dev->data;
     const struct iqs5xx_config *config = dev->config;
 
     data->dev = dev;
-
-	uint8_t activeRefreshRate[2] = {0, 32};
-    uint8_t idleRefreshRate[2] = {0, 64};
-    uint8_t stop = 1;
-	iqs5xx_write(dev, ActiveRR_adr, &activeRefreshRate[0], 2);
-	 LOG_ERR("\nactiverr\n");
-	iqs5xx_write(dev, END_WINDOW, 0, 1);
-	LOG_ERR("\nend_window\n");
-    iqs5xx_write(dev, IdleRR_adr, &idleRefreshRate[0], 2);
-	LOG_ERR("\nidlerr\n");
-    iqs5xx_write(dev, END_WINDOW, 0, 1);
-	LOG_ERR("\nend_window1\n");
-    iqs5xx_write(dev, LP2RR_adr, &activeRefreshRate[0], 2);
-	LOG_ERR("\nactiverr2\n");
-    iqs5xx_write(dev, END_WINDOW, 0, 1);
-	LOG_ERR("\nend_window3\n");
-    uint8_t h = 0xFF;
-    iqs5xx_write(dev, 0x06B7, &h, 1);
-	uint8_t buffer[44];
-    int res = iqs5xx_seq_read(dev, GestureEvents0_adr, buffer, 44);
-	LOG_ERR("\n READ DATA %d", ((buffer[5] << 8) | (buffer[6])));
-	
+    
+    // Configure data ready pin
 	gpio_pin_configure(config->dr_port, config->dr_pin, GPIO_INPUT | config->dr_flags);
-	
-    gpio_init_callback(&data->gpio_cb, iqs5xx_gpio_cb, BIT(config->dr_pin));
-    int ret = gpio_add_callback(config->dr_port, &data->gpio_cb);
-    if (ret < 0) {
-        LOG_ERR("Failed to set DR callback: %d", ret);
-        return -EIO;
+    
+    // Initialize device registers
+    struct iqs5xx_reg_config regconf = iqs5xx_reg_config_default();
+
+    int err = iqs5xx_registers_init(dev, &regconf);
+    if(err) {
+        LOG_ERR("Failed to initialize IQS5xx registers!\r\n");
     }
-
-    k_sem_init(&data->gpio_sem, 0, UINT_MAX);
-
-
-    // Setup trigger
-    trig.chan = SENSOR_CHAN_ALL;
-    trig.type = SENSOR_TRIG_DATA_READY;
-
-    sensor_trigger_set(config->dr_port, &trig, iqs5xx_dr_trig_handler);
-
-	//K_THREAD_DEFINE(trackpad_thread, 1024, iqs5xx_thread,
-    //                data->dev,  NULL, NULL, K_PRIO_COOP(10), 0, 0);
-		
-    /*k_thread_create(&data->thread, thread_stack, 2000, iqs5xx_thread,
-                     (void*)data->dev,  NULL, NULL, K_PRIO_COOP(10), 0, K_WAIT);*/
-	//k_thread_name_set(&data->thread, "iqs5xx");
-	LOG_ERR("\nend trackpad init\n");
 
     return 0;
 }
