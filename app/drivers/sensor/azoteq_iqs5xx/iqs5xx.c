@@ -8,6 +8,7 @@
 #define DT_DRV_COMPAT azoteq_iqs5xx
 
 #include <drivers/gpio.h>
+#include <nrfx_gpiote.h>
 #include <init.h>
 #include <drivers/sensor.h>
 #include <logging/log.h>
@@ -267,6 +268,11 @@ static int iqs5xx_trigger_set(const struct device *dev, const struct sensor_trig
     return 0;
 }
 
+
+int callbackCnt = 0;
+
+int callbackErr = 0;
+
 static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
     const struct device *dev = arg;
 	ARG_UNUSED(unused2);
@@ -276,8 +282,10 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
     int nstate = 0;
 
     while (1) {
-        k_sleep(K_MSEC(8));
-
+        //k_sem_take(&data->gpio_sem, K_FOREVER);
+        //k_sleep(K_MSEC(1000));
+        //LOG_ERR("Callback cnt %i %i\r\n", callbackCnt, callbackErr);
+        
         // Poll data ready pin
         nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
 
@@ -286,6 +294,15 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
             iqs5xx_sample_fetch(dev);
         }
     }
+}
+
+
+
+static void iqs5xx_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
+    callbackCnt++;
+    //struct iqs5xx_data *data = CONTAINER_OF(cb, struct iqs5xx_data, dr_cb);
+    //struct iqs5xx_config *config = data->dev->config;
+    //k_sem_give(&data->gpio_sem);
 }
 
 /**
@@ -334,14 +351,27 @@ static int iqs5xx_init(const struct device *dev) {
     
     // Configure data ready pin
 	gpio_pin_configure(config->dr_port, config->dr_pin, GPIO_INPUT | config->dr_flags);
+
+    // Initialize interrupt callback
+    gpio_init_callback(&data->dr_cb, iqs5xx_callback, BIT(config->dr_pin));
+    // Add callback
+	int err = gpio_add_callback(config->dr_port, &data->dr_cb);
+
+    callbackErr |= err;
     
     // Initialize device registers
     struct iqs5xx_reg_config regconf = iqs5xx_reg_config_default();
 
-    int err = iqs5xx_registers_init(dev, &regconf);
+    err = iqs5xx_registers_init(dev, &regconf);
     if(err) {
         LOG_ERR("Failed to initialize IQS5xx registers!\r\n");
     }
+
+    //k_sem_init(&data->gpio_sem, 0, UINT_MAX);
+
+    // Configure data ready interrupt
+    err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_EDGE_RISING);
+    callbackErr |= err;
 
     return 0;
 }
@@ -354,7 +384,7 @@ static const struct sensor_driver_api iqs5xx_driver_api = {
 };
 
 static const struct iqs5xx_data iqs5xx_data = {
-    .i2c = DEVICE_DT_GET(DT_BUS(DT_DRV_INST(0))),
+    .i2c = DEVICE_DT_GET(DT_BUS(DT_DRV_INST(0)))
 };
 
 static const struct iqs5xx_config iqs5xx_config = {
@@ -365,5 +395,6 @@ static const struct iqs5xx_config iqs5xx_config = {
 
 DEVICE_DT_INST_DEFINE(0, iqs5xx_init, NULL, &iqs5xx_data, &iqs5xx_config,
                       POST_KERNEL, 90, &iqs5xx_driver_api);
-					  
+
+			  
 K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(10), 0, 0);

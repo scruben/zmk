@@ -5,7 +5,8 @@
     "init.h": "c",
     "hid.h": "c",
     "devicetree.h": "c",
-    "iqs5xx.h": "c"
+    "iqs5xx.h": "c",
+    "ec11.h": "c"
   },
   "python.formatting.provider": "black"
 }
