@@ -29,7 +29,9 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.idleRefreshRate =           32;
     regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
     regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP;
-    regconf.tapTime =                   100;
+    regconf.tapTime =                   200;
+    regconf.tapDistance =               100;
+
 
     return regconf;
 }
@@ -287,6 +289,11 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
     // Set tap time
     *((uint16_t*)wbuff) = SWPEND16(config->tapTime);
     err |= iqs5xx_write(dev, TapTime_adr, wbuff, 2);
+    k_usleep(100);
+
+    // Set tap distance
+    *((uint16_t*)wbuff) = SWPEND16(config->tapDistance);
+    err |= iqs5xx_write(dev, TapDistance_adr, wbuff, 2);
     k_usleep(100);
 
     // Terminate transaction

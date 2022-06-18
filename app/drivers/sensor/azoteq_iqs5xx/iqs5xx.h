@@ -65,6 +65,8 @@ struct iqs5xx_reg_config {
     uint8_t     multiFingerGestureMask;
     // Tap time in ms
     uint16_t    tapTime;
+    // Tap distance in pixels
+    uint16_t    tapDistance;
 };
 
 // Returns the default register configuration
