@@ -19,9 +19,11 @@
 LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 
 // Time in ms to release left click after the gesture
-#define TRACKPAD_LEFTCLICK_RELEASE_TIME 50
+#define TRACKPAD_LEFTCLICK_RELEASE_TIME     50
 // Time in ms to release right click after the gesture
-#define TRACKPAD_RIGHTCLICK_RELEASE_TIME 50
+#define TRACKPAD_RIGHTCLICK_RELEASE_TIME    50
+// Scroll speed divider
+#define SCROLL_SPEED_DIVIDER                10
 
 //LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -61,7 +63,7 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
     struct sensor_value value;
 
     // X, Y
-    uint16_t pos_x = 0xFFFF, pos_y = 0xFFFF;
+    int16_t pos_x = 0xFFFF, pos_y = 0xFFFF;
     // Gesture/Z channel
     uint8_t gesture = 0xFF;
     // Fingers
@@ -114,6 +116,10 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                     // Right click
                     hasGesture = true;
                     trackpad_rightclick();
+                    break;
+                case GESTURE_SCROLLG:
+                    hasGesture = true;
+                    zmk_hid_mouse_scroll_set(-pos_y/SCROLL_SPEED_DIVIDER, pos_x/SCROLL_SPEED_DIVIDER);
                     break;
             }
         }

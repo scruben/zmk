@@ -28,7 +28,7 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.activeRefreshRate =         8;
     regconf.idleRefreshRate =           32;
     regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
-    regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP;
+    regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP | GESTURE_SCROLLG;
     regconf.tapTime =                   200;
     regconf.tapDistance =               100;
 
