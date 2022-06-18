@@ -31,6 +31,7 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP | GESTURE_SCROLLG;
     regconf.tapTime =                   200;
     regconf.tapDistance =               100;
+    regconf.touchMultiplier =           50;
 
 
     return regconf;
@@ -264,7 +265,13 @@ static void iqs5xx_callback(const struct device *dev, struct gpio_callback *cb, 
  */
 static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config) {
     // TODO: Retry if error on write
-    
+
+    struct iqs5xx_config *conf = dev->config;
+    // Wait for dataready?
+    while(!gpio_pin_get(conf->dr_port, conf->dr_pin)) {
+        k_msleep(1);
+    }
+
     int err = 0;
 
     // 16 or 32 bit values must be swapped to big endian
@@ -294,6 +301,10 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
     // Set tap distance
     *((uint16_t*)wbuff) = SWPEND16(config->tapDistance);
     err |= iqs5xx_write(dev, TapDistance_adr, wbuff, 2);
+    k_usleep(100);
+
+    // Set touch multiplier
+    err |= iqs5xx_write(dev, GlobalTouchSet_adr, &config->touchMultiplier, 1);
     k_usleep(100);
 
     // Terminate transaction

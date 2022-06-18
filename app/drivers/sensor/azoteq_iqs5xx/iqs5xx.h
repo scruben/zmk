@@ -67,6 +67,8 @@ struct iqs5xx_reg_config {
     uint16_t    tapTime;
     // Tap distance in pixels
     uint16_t    tapDistance;
+    // Touch multiplier
+    uint8_t     touchMultiplier;
 };
 
 // Returns the default register configuration
