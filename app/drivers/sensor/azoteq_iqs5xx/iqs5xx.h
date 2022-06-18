@@ -13,6 +13,7 @@
 #include <device.h>
 #include <drivers/i2c.h>
 #include <sys/util.h>
+#include <drivers/gpio.h>
 /*
 struct iqs5xx_sample {
 	int16_t 	i16RelX[6];
@@ -31,6 +32,7 @@ struct iqs5xx_data {
     //absolute x,y
     uint16_t ax, ay;
     uint8_t gesture;
+    uint8_t fingers;
     const struct device *dev;
     const struct sensor_trigger *data_ready_trigger;
 	struct gpio_callback dr_cb;
@@ -61,6 +63,8 @@ struct iqs5xx_reg_config {
     uint8_t     singleFingerGestureMask;
     // Which multi finger gestures will be enabled
     uint8_t     multiFingerGestureMask;
+    // Tap time in ms
+    uint16_t    tapTime;
 };
 
 // Returns the default register configuration
@@ -83,18 +87,18 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default ();
 //
 //! GestureEvents0 bit definitions
 //
-#define SWIPE_Y_NEG	    		0x20
-#define SWIPE_Y_POS	    		0x10
-#define SWIPE_X_POS      		0x08
-#define SWIPE_X_NEG        		0x04
-#define TAP_AND_HOLD     		0x02
-#define SINGLE_TAP        		0x01
+#define GESTURE_SWIPE_Y_NEG	    		0x20
+#define GESTURE_SWIPE_Y_POS	    		0x10
+#define GESTURE_SWIPE_X_POS      		0x08
+#define GESTURE_SWIPE_X_NEG        		0x04
+#define GESTURE_TAP_AND_HOLD     		0x02
+#define GESTURE_SINGLE_TAP        		0x01
 //
 //! GesturesEvents1 bit definitions
 //
-#define ZOOM	          		0x04
-#define SCROLLG		     		0x02
-#define TWO_FINGER_TAP       	0x01
+#define GESTURE_ZOOM	          		0x04
+#define GESTURE_SCROLLG		     		0x02
+#define GESTURE_TWO_FINGER_TAP       	0x01
 //
 //! SystemInfo0 bit definitions
 //

@@ -27,8 +27,9 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     struct iqs5xx_reg_config regconf;
     regconf.activeRefreshRate =         8;
     regconf.idleRefreshRate =           32;
-    regconf.singleFingerGestureMask =   SINGLE_TAP | TAP_AND_HOLD;
-    regconf.multiFingerGestureMask =    TWO_FINGER_TAP;
+    regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
+    regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP;
+    regconf.tapTime =                   100;
 
     return regconf;
 }
@@ -99,8 +100,6 @@ static int iqs5xx_attr_set(const struct device *dev, enum sensor_channel chan,
  */
 static int iqs5xx_channel_get(const struct device *dev, enum sensor_channel chan,
                               struct sensor_value *val) {
-    LOG_ERR("\nCHANNEL GET");
-
     const struct iqs5xx_data *data = dev->data;
     switch (chan) {
     case SENSOR_CHAN_POS_DX:
@@ -111,29 +110,13 @@ static int iqs5xx_channel_get(const struct device *dev, enum sensor_channel chan
         break;
     case SENSOR_CHAN_POS_DZ:
         val->val1 = data->gesture;
+        val->val2 = data->fingers;
         break;
     default:
         return -ENOTSUP;
     }
     return 0;
 }
-
-// One finger tap release timer
-struct k_timer tap_release_timer;
-void tap_release_handler(struct k_timer *timer) {
-    zmk_hid_mouse_button_release(0);
-    zmk_endpoints_send_mouse_report();
-}
-K_TIMER_DEFINE(tap_release_timer, tap_release_handler, NULL);
-
-// Two finger tap release timer
-struct k_timer multifinger_tap_release_timer;
-void multifinger_tap_release_handler(struct k_timer *timer) {
-    zmk_hid_mouse_button_release(1);
-    zmk_endpoints_send_mouse_report();
-}
-K_TIMER_DEFINE(multifinger_tap_release_timer, multifinger_tap_release_handler, NULL);
-
 
 static int iqs5xx_sample_fetch(const struct device *dev) {
     //LOG_ERR("\nSAMPLE FETCH");
@@ -161,7 +144,6 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     d.ui8NoOfFingers = buffer[4];
     uint8_t i;
     static uint8_t ui8FirstTouch = 0;
-    uint8_t ui8NoOfFingers;
     if (d.ui8NoOfFingers != 0) {
         if (!(ui8FirstTouch)) {
             ui8FirstTouch = 1;
@@ -191,83 +173,22 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     // gesture bank 2
     multiTouchGesture = buffer[1];
 
-
     // set data to device data portion
     data->rx = (int16_t)(int8_t)d.i16RelX[1];
     data->ry = (int16_t)(int8_t)d.i16RelY[1];
     data->ax = d.ui16AbsX[1];
     data->ay = d.ui16AbsY[1];
-    data->gesture = d.gesture;
-
-    bool inputChanged = false;
-
-    if(multiTouchGesture & TWO_FINGER_TAP) {
-        // Two finger tap/right click
-        zmk_hid_mouse_button_press(1);
-        inputChanged = true;
-        k_timer_start(&multifinger_tap_release_timer, K_MSEC(50), K_NO_WAIT);
+    if(multiTouchGesture != 0) {
+        // msb to high if multitouch
+        data->gesture = multiTouchGesture | 0x80;
     }
-    else if(d.gesture & SINGLE_TAP) {
-        // One finger tap/left click
-        zmk_hid_mouse_button_press(0);
-        inputChanged = true;
-        k_timer_start(&tap_release_timer, K_MSEC(50), K_NO_WAIT);
+    else {
+        data->gesture = d.gesture;
     }
-    else if(d.ui8NoOfFingers > 0) {
-        zmk_hid_mouse_movement_set(-data->ry, data->rx);
-        inputChanged = true;
-    }
-
-    if(inputChanged) {
-        zmk_endpoints_send_mouse_report();
-    }
+    data->fingers = d.ui8NoOfFingers;
 
     return 0;
 }
-
-/**
- * @brief Set the interrupt
- *
- * @param dev
- * @param en
- */
-static void set_int(const struct device *dev, const bool en) {
-	LOG_ERR("\nSetting interrupt\n");
-    const struct iqs5xx_config *config = dev->config;
-    int ret = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin,
-                                           en ? GPIO_INT_LEVEL_ACTIVE : GPIO_INT_DISABLE);
-    if (ret < 0) {
-        LOG_ERR("\ncan't set interrupt\n");
-    }
-}
-
-/**
- * @brief set trigger for interrupt
- *
- * @param dev
- * @param trig
- * @param handler
- * @return int
- */
-static int iqs5xx_trigger_set(const struct device *dev, const struct sensor_trigger *trig,
-                              sensor_trigger_handler_t handler) {
-    struct iqs5xx_data *data = dev->data;
-    LOG_ERR("\nTRIGGER_SET");
-
-    set_int(dev, false);
-    if (trig->type != SENSOR_TRIG_DATA_READY) {
-        LOG_ERR("\nENOTSUP");
-
-        return -ENOTSUP;
-    }
-    LOG_ERR("\nNOT ENOTSUP");
-
-    data->data_ready_trigger = trig;
-    data->data_ready_handler = handler;
-    set_int(dev, true);
-    return 0;
-}
-
 
 int callbackCnt = 0;
 
@@ -280,26 +201,48 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
     struct iqs5xx_data *data = dev->data;
     struct iqs5xx_config *conf = dev->config;
     int nstate = 0;
-
+    int64_t lastSample = 0;
     while (1) {
         //k_sem_take(&data->gpio_sem, K_FOREVER);
-        //k_sleep(K_MSEC(1000));
-        //LOG_ERR("Callback cnt %i %i\r\n", callbackCnt, callbackErr);
-        
+
+        // Sleep for maximum possible time to maximize processor time for other tasks
+        k_msleep(4);
+
         // Poll data ready pin
         nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
 
         if(nstate) {
             // Fetch the sample
             iqs5xx_sample_fetch(dev);
+            
+            // Trigger sensor
+            if(data->data_ready_trigger != NULL) {
+                data->data_ready_handler(dev, data->data_ready_trigger);
+            }
         }
     }
 }
 
+int iqs5xx_trigger_set(const struct device *dev, const struct sensor_trigger *trig,
+                     sensor_trigger_handler_t handler) {
+    struct iqs5xx_data *data = dev->data;
 
+    data->data_ready_trigger = trig;
+    data->data_ready_handler = handler;
 
+    return 0;
+}
+
+/**
+ * @brief 
+ * 
+ * @param dev 
+ * @param cb 
+ * @param pins 
+ */
 static void iqs5xx_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
-    callbackCnt++;
+    // Interrupts not yet working
+    //callbackCnt++;
     //struct iqs5xx_data *data = CONTAINER_OF(cb, struct iqs5xx_data, dr_cb);
     //struct iqs5xx_config *config = data->dev->config;
     //k_sem_give(&data->gpio_sem);
@@ -329,10 +272,15 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
     k_usleep(100);
 
     // Set single finger gestures
-    err |= iqs5xx_write(dev, SFGestureEnable_adr, &config->singleFingerGestureMask, 2);
+    err |= iqs5xx_write(dev, SFGestureEnable_adr, &config->singleFingerGestureMask, 1);
     k_usleep(100);
     // Set multi finger gestures
-    err |= iqs5xx_write(dev, MFGestureEnable_adr, &config->multiFingerGestureMask, 2);
+    err |= iqs5xx_write(dev, MFGestureEnable_adr, &config->multiFingerGestureMask, 1);
+    k_usleep(100);
+
+    // Set tap time
+    *((uint16_t*)wbuff) = SWPEND16(config->tapTime);
+    err |= iqs5xx_write(dev, TapTime_adr, wbuff, 2);
     k_usleep(100);
 
     // Terminate transaction
@@ -366,15 +314,16 @@ static int iqs5xx_init(const struct device *dev) {
     if(err) {
         LOG_ERR("Failed to initialize IQS5xx registers!\r\n");
     }
-
-    //k_sem_init(&data->gpio_sem, 0, UINT_MAX);
+    // Blocking semaphore as a flag for sensor read (to be used after gpio interrupts work...)
+    // k_sem_init(&data->gpio_sem, 0, UINT_MAX);
 
     // Configure data ready interrupt
-    err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_EDGE_RISING);
+    err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_DISABLE);
     callbackErr |= err;
 
     return 0;
 }
+
 
 static const struct sensor_driver_api iqs5xx_driver_api = {
     .trigger_set = iqs5xx_trigger_set,
@@ -383,8 +332,10 @@ static const struct sensor_driver_api iqs5xx_driver_api = {
     .attr_set = iqs5xx_attr_set,
 };
 
-static const struct iqs5xx_data iqs5xx_data = {
-    .i2c = DEVICE_DT_GET(DT_BUS(DT_DRV_INST(0)))
+
+static struct iqs5xx_data iqs5xx_data = {
+    .i2c = DEVICE_DT_GET(DT_BUS(DT_DRV_INST(0))),
+    .data_ready_trigger = NULL
 };
 
 static const struct iqs5xx_config iqs5xx_config = {
@@ -394,7 +345,7 @@ static const struct iqs5xx_config iqs5xx_config = {
 };
 
 DEVICE_DT_INST_DEFINE(0, iqs5xx_init, NULL, &iqs5xx_data, &iqs5xx_config,
-                      POST_KERNEL, 90, &iqs5xx_driver_api);
+                      POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, &iqs5xx_driver_api);
 
 			  
 K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(10), 0, 0);
