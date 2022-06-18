@@ -24,4 +24,16 @@ config IQS5XX_THREAD_STACK_SIZE
 	help
 	  Stack size of thread used by the driver to handle interrupts.
 
+choice
+	prompt "Interrupt or poll trackpad ready pin"
+
+config IQS5XX_POLL
+	bool "Poll data-ready pin"
+
+config IQS5XX_INTERRUPT
+	bool "Interrupt from data-ready pin"
+
+endchoice
+
+
 endif # IQS5XX

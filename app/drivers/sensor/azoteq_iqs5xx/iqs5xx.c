@@ -203,23 +203,31 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
     int nstate = 0;
     int64_t lastSample = 0;
     while (1) {
-        //k_sem_take(&data->gpio_sem, K_FOREVER);
-
         // Sleep for maximum possible time to maximize processor time for other tasks
-        k_msleep(4);
+        #ifdef CONFIG_IQS5XX_POLL
+            k_msleep(4);
 
-        // Poll data ready pin
-        nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
+            // Poll data ready pin
+            nstate = gpio_pin_get(conf->dr_port, conf->dr_pin);
 
-        if(nstate) {
-            // Fetch the sample
+            if(nstate) {
+                // Fetch the sample
+                iqs5xx_sample_fetch(dev);
+                
+                // Trigger sensor
+                if(data->data_ready_trigger != NULL) {
+                    data->data_ready_handler(dev, data->data_ready_trigger);
+                }
+            }
+        #elif CONFIG_IQS5XX_INTERRUPT
+            k_sem_take(&data->gpio_sem, K_FOREVER);
             iqs5xx_sample_fetch(dev);
-            
             // Trigger sensor
             if(data->data_ready_trigger != NULL) {
                 data->data_ready_handler(dev, data->data_ready_trigger);
             }
-        }
+
+        #endif
     }
 }
 
@@ -241,11 +249,9 @@ int iqs5xx_trigger_set(const struct device *dev, const struct sensor_trigger *tr
  * @param pins 
  */
 static void iqs5xx_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
-    // Interrupts not yet working
-    //callbackCnt++;
-    //struct iqs5xx_data *data = CONTAINER_OF(cb, struct iqs5xx_data, dr_cb);
-    //struct iqs5xx_config *config = data->dev->config;
-    //k_sem_give(&data->gpio_sem);
+    struct iqs5xx_data *data = CONTAINER_OF(cb, struct iqs5xx_data, dr_cb);
+    struct iqs5xx_config *config = data->dev->config;
+    k_sem_give(&data->gpio_sem);
 }
 
 /**
@@ -294,19 +300,13 @@ static int iqs5xx_init(const struct device *dev) {
     LOG_DBG("IQS5xx INIT\r\n");
     struct iqs5xx_data *data = dev->data;
     const struct iqs5xx_config *config = dev->config;
+    int err = 0;
 
     data->dev = dev;
     
     // Configure data ready pin
 	gpio_pin_configure(config->dr_port, config->dr_pin, GPIO_INPUT | config->dr_flags);
 
-    // Initialize interrupt callback
-    gpio_init_callback(&data->dr_cb, iqs5xx_callback, BIT(config->dr_pin));
-    // Add callback
-	int err = gpio_add_callback(config->dr_port, &data->dr_cb);
-
-    callbackErr |= err;
-    
     // Initialize device registers
     struct iqs5xx_reg_config regconf = iqs5xx_reg_config_default();
 
@@ -314,12 +314,22 @@ static int iqs5xx_init(const struct device *dev) {
     if(err) {
         LOG_ERR("Failed to initialize IQS5xx registers!\r\n");
     }
-    // Blocking semaphore as a flag for sensor read (to be used after gpio interrupts work...)
-    // k_sem_init(&data->gpio_sem, 0, UINT_MAX);
 
-    // Configure data ready interrupt
-    err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_DISABLE);
+    #if CONFIG_IQS5XX_INTERRUPT
+
+    // Blocking semaphore as a flag for sensor read
+    k_sem_init(&data->gpio_sem, 0, UINT_MAX);
+    
+    // Initialize interrupt callback
+    gpio_init_callback(&data->dr_cb, iqs5xx_callback, BIT(config->dr_pin));
+    // Add callback
+	err = gpio_add_callback(config->dr_port, &data->dr_cb);
+
     callbackErr |= err;
+    // Configure data ready interrupt
+    err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_EDGE_RISING);
+    callbackErr |= err;
+    #endif
 
     return 0;
 }
