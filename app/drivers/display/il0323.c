@@ -186,9 +186,10 @@ static int il0323_write(const struct device *dev, const uint16_t x, const uint16
         return -EIO;
     }
 
-    memcpy(last_buffer, (uint8_t *)buf, IL0323_BUFFER_SIZE);
+    memcpy(last_buffer, (uint8_t *)buf, buf_len);
 
     /* Update partial window and disable Partial Mode */
+
     if (blanking_on == false) {
         if (il0323_update_display(dev)) {
             return -EIO;
@@ -282,6 +283,8 @@ static int il0323_controller_init(const struct device *dev) {
     uint8_t tmp[IL0323_TRES_REG_LENGTH];
 
     LOG_DBG("");
+
+    memset(last_buffer, 0xFF, IL0323_BUFFER_SIZE);
 
     gpio_pin_set(driver->reset, IL0323_RESET_PIN, 1);
     k_msleep(IL0323_RESET_DELAY);
