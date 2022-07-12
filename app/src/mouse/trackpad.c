@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2022
  * 
  */
-
+#ifdef CONFIG_IQS550
 #include <device.h>
 #include <init.h>
 #include <drivers/sensor.h>
@@ -170,3 +170,4 @@ static int trackpad_init(const struct device *_arg) {
 }
 
 SYS_INIT(trackpad_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif
