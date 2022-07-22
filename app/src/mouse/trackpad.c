@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2022
  * 
  */
-#ifdef CONFIG_IQS550
+//#ifdef CONFIG_IQS550
 #include <device.h>
 #include <init.h>
 #include <drivers/sensor.h>
@@ -24,6 +24,8 @@ LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 #define TRACKPAD_RIGHTCLICK_RELEASE_TIME    50
 // Scroll speed divider
 #define SCROLL_SPEED_DIVIDER                10
+
+static bool isHolding = false;
 
 //LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -47,14 +49,30 @@ K_TIMER_DEFINE(rightclick_release_timer, trackpad_rightclick_release, NULL);
 
 
 static inline void trackpad_leftclick () {
-    zmk_hid_mouse_button_press(0);
-    k_timer_start(&leftclick_release_timer, K_MSEC(TRACKPAD_LEFTCLICK_RELEASE_TIME), K_NO_WAIT);
+    if(isHolding)  {
+        zmk_hid_mouse_button_release(0);
+        isHolding = false;
+    } else {
+        zmk_hid_mouse_button_press(0);
+        k_timer_start(&leftclick_release_timer, K_MSEC(TRACKPAD_LEFTCLICK_RELEASE_TIME), K_NO_WAIT);
+    }
 }
 
 static inline void trackpad_rightclick () {
     zmk_hid_mouse_button_press(1);
     k_timer_start(&rightclick_release_timer, K_MSEC(TRACKPAD_RIGHTCLICK_RELEASE_TIME), K_NO_WAIT);
 }
+
+
+static inline void trackpad_tap_and_hold(bool g) {
+    if (!isHolding && g) {
+        LOG_ERR("!isHolding and G = true");
+        zmk_hid_mouse_button_press(0);
+        isHolding = true;
+    }
+}
+
+
 
 // Sensor trigger handler
 static void trackpad_trigger_handler(const struct device *dev, const struct sensor_trigger *trig) {
@@ -105,7 +123,6 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
     }
 
     bool hasGesture = false;
-
     // Check if any gesture exists
     if(gesture & 0x7F) {
 
@@ -131,9 +148,16 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                     hasGesture = true;
                     trackpad_leftclick();
                     break;
+                case GESTURE_TAP_AND_HOLD:
+                    //drag n drop
+                    trackpad_tap_and_hold(true);
+                    LOG_ERR("TAP AND HOLD");
+                    isHolding = true;
             }
         }
     }
+
+    //check for tap and hold release
 
     bool inputMoved = false;
 
@@ -170,4 +194,4 @@ static int trackpad_init(const struct device *_arg) {
 }
 
 SYS_INIT(trackpad_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
-#endif
+//#endif
