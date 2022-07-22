@@ -6,7 +6,15 @@
     "hid.h": "c",
     "devicetree.h": "c",
     "iqs5xx.h": "c",
-    "ec11.h": "c"
+    "ec11.h": "c",
+    "device.h": "c",
+    "*.inc": "c",
+    "log.h": "c",
+    "stdio.h": "c",
+    "string.h": "c",
+    "spi.h": "c",
+    "log_core.h": "c",
+    "util.h": "c"
   },
   "python.formatting.provider": "black"
 }

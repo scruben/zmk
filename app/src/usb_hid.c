@@ -23,8 +23,19 @@ static K_SEM_DEFINE(hid_sem, 1, 1);
 
 static void in_ready_cb(const struct device *dev) { k_sem_give(&hid_sem); }
 
+static void out_ready_cb(const struct device *dev) { 
+    uint8_t buff[64];
+    memset(buff, 0, 64);
+    uint32_t rlen = 0;
+    int err = hid_int_ep_read(dev, buff, 64, &rlen);
+
+    LOG_ERR("Recv: %x %x %x %x\r\n", buff[0], buff[1], buff[2], buff[3]);
+    
+}
+
 static const struct hid_ops ops = {
     .int_in_ready = in_ready_cb,
+    .int_out_ready = out_ready_cb
 };
 
 int zmk_usb_hid_send_report(const uint8_t *report, size_t len) {

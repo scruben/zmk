@@ -1,0 +1,7 @@
+
+config IL0323N
+	bool "IL0323 without ZMK display"
+	depends on SPI
+	depends on HEAP_MEM_POOL_SIZE != 0
+	help
+	  Enable IL0323 driver (without ZMK display).
