@@ -469,6 +469,10 @@ choice CBPRINTF_IMPLEMENTATION
 
 endchoice
 
+config ZEPHYR_HDL
+	bool "Use HDL"
+	default n
+
 module = ZMK
 module-str = zmk
 source "subsys/logging/Kconfig.template.log_config"

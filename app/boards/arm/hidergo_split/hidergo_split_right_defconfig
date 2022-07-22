@@ -58,6 +58,7 @@ CONFIG_NFCT_PINS_AS_GPIOS=y
 
 # Display drivers without ZMK display
 CONFIG_IL0323N=y
+CONFIG_ZEPHYR_HDL=y
 
 
 CONFIG_LOG=y

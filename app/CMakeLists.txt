@@ -99,5 +99,8 @@ target_sources_ifdef(CONFIG_ZMK_BACKLIGHT app PRIVATE src/backlight.c)
 target_sources(app PRIVATE src/main.c)
 
 add_subdirectory(src/display/)
+# HDL
+add_subdirectory(src/hdl/)
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/display.c)
 
 zephyr_cc_option(-Wfatal-errors)

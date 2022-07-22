@@ -39,10 +39,11 @@ struct il0323_data {
 #endif
     uint8_t power_on;
     uint8_t partial_mode;
+    uint8_t hibernating;
 };
 
 // Pixel buffer
-static uint8_t il0323_buffer[1200];
+static uint8_t il0323_buffer[1280];
 
 // Initialization programs
 // 1B command, 1B data length, xB data
@@ -205,6 +206,21 @@ static int il0323_power (struct il0323_data *driver, uint8_t on) {
     driver->power_on = on;
 
     return 0;
+}
+
+static int il0323_hibernate (struct il0323_data *driver) {
+    // Switch off power
+    if(il0323_power(driver, false)) {
+        return -EIO;
+    }
+
+    // Write deep sleep command
+    uint8_t val = 0xA5;
+    if (il0323_write_reg(driver, 0x07, &val, 1)) {
+        return -EIO;
+    }
+
+    driver->hibernating = true;
 }
 
 
@@ -481,9 +497,8 @@ static int il0323_init (const struct device *dev) {
     // Reset device
     init_err |= il0323_reset(driver);
 
-    // Initialize partial mode
+    // Full mode for refresh
     init_err |= il0323_driver_init_full(dev);
-
     il0323_busy_wait(driver);
     // Power ON
     init_err |= il0323_power(driver, true);
@@ -493,6 +508,14 @@ static int il0323_init (const struct device *dev) {
 
     // Refresh
     init_err |= il0323_refresh(dev, 0, 0, 80, 128);
+
+
+    // Initialize partial mode
+    init_err |= il0323_driver_init_partial(dev);
+
+    il0323_busy_wait(driver);
+
+    il0323_hibernate(driver);
     
 
     return 0;
