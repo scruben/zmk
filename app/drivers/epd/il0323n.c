@@ -1,7 +1,6 @@
 #define DT_DRV_COMPAT gooddisplay_il0323n
 
 #include "il0323n.h"
-#include <device.h>
 #include <drivers/spi.h>
 #include <string.h>
 
@@ -521,23 +520,8 @@ static int il0323_init (const struct device *dev) {
     return 0;
 }
 
-static void il0323_thread(void *arg, void *unused2, void *unused3) {
-    const struct device *dev = arg;
-    while(1) {
-        k_msleep(20000);
-        LOG_ERR("INIT ERR %i\r\n", init_err);
-        // Initialize buffer
-        init_err |= il0323_init_buffer(dev);
-        il0323_refresh(dev, 0, 0, 80, 128);
-    }
-}
-
 
 static struct il0323_data il0323_driver;
-
-struct il0323_api {
-
-};
 
 static struct il0323_api il0323_driver_api = {
 
@@ -545,5 +529,3 @@ static struct il0323_api il0323_driver_api = {
 
 DEVICE_DT_INST_DEFINE(0, il0323_init, NULL, &il0323_driver, NULL, POST_KERNEL,
                       CONFIG_APPLICATION_INIT_PRIORITY, &il0323_driver_api);
-
-K_THREAD_DEFINE(il0323_thr, 1024, il0323_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(10), 0, 0);
