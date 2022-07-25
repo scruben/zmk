@@ -8,10 +8,11 @@ static const struct device *display;
 
 static struct HDL_Interface interface;
 
+LOG_MODULE_REGISTER(hdldisp, CONFIG_DISPLAY_LOG_LEVEL);
+
 
 static void display_thread(void *arg, void *unused2, void *unused3) {
 
-    struct il0323_api *api = display->api;
 
     while(1) {
         k_msleep(1000);
@@ -29,7 +30,10 @@ static int display_init () {
         return -EINVAL;
     }
 
+    // Initialize HDL
     interface = HDL_CreateInterface(80, 128, HDL_COLORS_MONO, HDL_FEAT_TEXT | HDL_FEAT_LINE_HV);
+
+    // Set interface functions
 
     return 0;
 }
