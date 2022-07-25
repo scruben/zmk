@@ -27,6 +27,9 @@ LOG_MODULE_REGISTER(il0323n, CONFIG_DISPLAY_LOG_LEVEL);
 #define EPD_PANEL_WIDTH DT_INST_PROP(0, width)
 #define EPD_PANEL_HEIGHT DT_INST_PROP(0, height)
 
+// Clamp bound values
+#define IL0323_CLAMP_BOUNDS
+
 struct il0323_data {
     const struct device *reset;
     const struct device *dc;
@@ -231,8 +234,6 @@ static int il0323_hibernate (struct il0323_data *driver) {
  */
 static int il0323_driver_init (const struct device *dev) {
     struct il0323_data *driver = dev->data;
-    // Temporary buffer for writing
-    uint8_t buff[16];
 
     // Write registers
     int i = 0;
@@ -376,6 +377,9 @@ static int il0323_init_buffer (struct device *dev) {
 }
 
 static int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t h) {
+
+    il0323_power(dev->data, true);
+
     struct il0323_data *driver = dev->data;
 
     if(!driver->partial_mode) {
@@ -428,6 +432,53 @@ static int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, 
 
     return 0;
 }
+
+
+static void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+    struct il0323_data *driver = dev->data;
+
+#ifdef IL0323_CLAMP_BOUNDS
+    // Clamp x y
+    x = (x <= EPD_PANEL_WIDTH) ? x : EPD_PANEL_WIDTH;
+    y = (y <= EPD_PANEL_HEIGHT) ? y : EPD_PANEL_HEIGHT;
+    // Clamp w h
+    w = (x + w <= EPD_PANEL_WIDTH) ? w : EPD_PANEL_WIDTH;
+    h = (y + h <= EPD_PANEL_HEIGHT) ? h : EPD_PANEL_HEIGHT;
+#endif
+
+    for(int ly = y; ly < y + h; ly++) {
+        for(int lx = x; lx < x + w; lx++) {
+            il0323_buffer[ly * (EPD_PANEL_WIDTH/8) + lx / 8] &= ~(1 << (lx % 8));
+        }
+    }
+
+    return;
+}
+
+static void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y) {
+    struct il0323_data *driver = dev->data;
+
+#ifdef IL0323_CLAMP_BOUNDS
+    // Don't draw outside bounds
+    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
+#endif
+    il0323_buffer[y * (EPD_PANEL_WIDTH/8) + x / 8] |= 1 << (x % 8);
+
+    return;
+}
+
+static void il0323_clear_pixel (const struct device *dev, uint8_t x, uint8_t y) {
+    struct il0323_data *driver = dev->data;
+
+#ifdef IL0323_CLAMP_BOUNDS
+    // Don't draw outside bounds
+    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
+#endif
+    il0323_buffer[y * (EPD_PANEL_WIDTH/8) + x / 8] &= ~(1 << (x % 8));
+
+    return;
+}
+
 
 int init_err = 0;
 
@@ -523,8 +574,11 @@ static int il0323_init (const struct device *dev) {
 
 static struct il0323_data il0323_driver;
 
+struct il0323_api {
+    
+};
 static struct il0323_api il0323_driver_api = {
-
+    
 };
 
 DEVICE_DT_INST_DEFINE(0, il0323_init, NULL, &il0323_driver, NULL, POST_KERNEL,
