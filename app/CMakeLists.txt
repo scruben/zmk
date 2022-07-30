@@ -102,5 +102,7 @@ add_subdirectory(src/display/)
 # HDL
 add_subdirectory(src/hdl/)
 target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/display.c)
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/font.c)
+
 
 zephyr_cc_option(-Wfatal-errors)
