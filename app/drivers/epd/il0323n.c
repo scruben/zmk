@@ -376,7 +376,7 @@ static int il0323_init_buffer (struct device *dev) {
     return 0;
 }
 
-static int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t h) {
+int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t h) {
 
     il0323_power(dev->data, true);
 
@@ -434,7 +434,7 @@ static int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, 
 }
 
 
-static void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
     struct il0323_data *driver = dev->data;
 
 #ifdef IL0323_CLAMP_BOUNDS
@@ -455,7 +455,7 @@ static void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, u
     return;
 }
 
-static void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y) {
+void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y) {
     struct il0323_data *driver = dev->data;
 
 #ifdef IL0323_CLAMP_BOUNDS
@@ -467,7 +467,43 @@ static void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y) {
     return;
 }
 
-static void il0323_clear_pixel (const struct device *dev, uint8_t x, uint8_t y) {
+void il0323_h_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len) {
+    struct il0323_data *driver = dev->data;
+
+#ifdef IL0323_CLAMP_BOUNDS
+    if((uint16_t)len + (uint16_t)x > EPD_PANEL_WIDTH) {
+        len = EPD_PANEL_WIDTH - x;
+    }
+    // Don't draw outside bounds
+    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
+        return;
+#endif
+    for(int i = x; i < x + len; i++) {
+        il0323_buffer[y * (EPD_PANEL_WIDTH/8) + i / 8] |= 1 << (i % 8);
+    }
+
+    return;
+}
+
+void il0323_v_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len) {
+    struct il0323_data *driver = dev->data;
+
+#ifdef IL0323_CLAMP_BOUNDS
+    if((uint16_t)len + (uint16_t)y > EPD_PANEL_HEIGHT) {
+        len = EPD_PANEL_WIDTH - x;
+    }
+    // Don't draw outside bounds
+    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
+        return;
+#endif
+    for(int i = y; i < y + len; i++) {
+        il0323_buffer[i * (EPD_PANEL_WIDTH/8) + x / 8] |= 1 << (x % 8);
+    }
+
+    return;
+}
+
+void il0323_clear_pixel (const struct device *dev, uint8_t x, uint8_t y) {
     struct il0323_data *driver = dev->data;
 
 #ifdef IL0323_CLAMP_BOUNDS

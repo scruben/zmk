@@ -1,0 +1,38 @@
+#const B_HOURS   1
+#const B_MINS    2
+#const B_HIDEBAT 3
+
+#img BATTERY_ICON (10, 16)
+    0001111000
+    1111111111
+    1111111111
+    1100000011
+    1100000011
+    1100000011
+    1100000011
+    1100000011
+    1100000011
+    1100000011
+    1100000011
+    1101111011
+    1101111011
+    1100000011
+    1111111111
+    1111111111
+;
+
+<box flexdir="row">
+    <box flex=1 flexdir="col">
+        <box>
+            TEST
+        </box>
+        <box img=BATTERY_ICON size=1>
+            
+        </box>
+    </box>
+    <box flex=5 flexdir="row">
+        <box size=3>
+            12\n32
+        </box>
+    </box>
+</box>

@@ -13,7 +13,7 @@
  * @param w 
  * @param h 
  */
-static void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 
 /**
  * @brief Sets a pixel in the buffer
@@ -22,7 +22,7 @@ static void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, u
  * @param x 
  * @param y 
  */
-static void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y);
+void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y);
 
 /**
  * @brief Clears a pixel in the buffer
@@ -31,7 +31,7 @@ static void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y);
  * @param x 
  * @param y 
  */
-static void il0323_clear_pixel (const struct device *dev, uint8_t x, uint8_t y);
+void il0323_clear_pixel (const struct device *dev, uint8_t x, uint8_t y);
 
 /**
  * @brief Refreshes an area of the screen
@@ -43,6 +43,26 @@ static void il0323_clear_pixel (const struct device *dev, uint8_t x, uint8_t y);
  * @param h 
  * @return int 
  */
-static int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t h);
+int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t h);
+
+/**
+ * @brief Draws a horizontal line
+ * 
+ * @param dev 
+ * @param x 
+ * @param y 
+ * @param len 
+ */
+void il0323_h_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len);
+
+/**
+ * @brief Draws a vertical line
+ * 
+ * @param dev 
+ * @param x 
+ * @param y 
+ * @param len 
+ */
+void il0323_v_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len);
 
 #endif
