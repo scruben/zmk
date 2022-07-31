@@ -15,7 +15,8 @@
     "spi.h": "c",
     "log_core.h": "c",
     "util.h": "c",
-    "math.h": "c"
+    "math.h": "c",
+    "source_location": "c"
   },
   "python.formatting.provider": "black"
 }

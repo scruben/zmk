@@ -182,6 +182,7 @@ static int il0323_reset (struct il0323_data *driver) {
     gpio_pin_set(driver->reset, IL0323_RESET_PIN, 0);
     k_msleep(10);
     il0323_busy_wait(driver);
+    driver->hibernating = false;
     return 0;
 }
 
@@ -210,7 +211,8 @@ static int il0323_power (struct il0323_data *driver, uint8_t on) {
     return 0;
 }
 
-static int il0323_hibernate (struct il0323_data *driver) {
+int il0323_hibernate (const struct device *dev) {
+    struct il0323_data *driver = dev->data;
     // Switch off power
     if(il0323_power(driver, false)) {
         return -EIO;
@@ -378,9 +380,16 @@ static int il0323_init_buffer (struct device *dev) {
 
 int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t h) {
 
-    il0323_power(dev->data, true);
-
     struct il0323_data *driver = dev->data;
+
+    if(driver->hibernating) {
+        // Reset
+        il0323_reset(driver);
+        k_msleep(10);
+        il0323_driver_init_partial(dev);
+    }
+
+    il0323_power(dev->data, true);
 
     if(!driver->partial_mode) {
         // Full refresh
@@ -417,6 +426,13 @@ int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t
         return -EIO;
     }
 
+    // Init new data
+    if (il0323_write_reg(driver, 0x13, il0323_buffer, sizeof(il0323_buffer))) {
+        return -EIO;
+    }
+    
+    il0323_busy_wait(driver);
+
     // Update part
     if (il0323_write_reg(driver, 0x12, NULL, 0)) {
         return -EIO;
@@ -448,57 +464,23 @@ void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, uint8_t 
 
     for(int ly = y; ly < y + h; ly++) {
         for(int lx = x; lx < x + w; lx++) {
-            il0323_buffer[ly * (EPD_PANEL_WIDTH/8) + lx / 8] &= ~(1 << (lx % 8));
+            il0323_buffer[ly * (EPD_PANEL_WIDTH/8) + lx / 8] |= 1 << (7 - (lx % 8));
         }
     }
 
     return;
 }
 
-void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y) {
+void il0323_set_pixel (const struct device *dev, uint16_t x, uint16_t y) {
     struct il0323_data *driver = dev->data;
 
 #ifdef IL0323_CLAMP_BOUNDS
     // Don't draw outside bounds
-    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
-#endif
-    il0323_buffer[y * (EPD_PANEL_WIDTH/8) + x / 8] |= 1 << (x % 8);
-
-    return;
-}
-
-void il0323_h_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len) {
-    struct il0323_data *driver = dev->data;
-
-#ifdef IL0323_CLAMP_BOUNDS
-    if((uint16_t)len + (uint16_t)x > EPD_PANEL_WIDTH) {
-        len = EPD_PANEL_WIDTH - x;
-    }
-    // Don't draw outside bounds
-    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
+    if(x >= EPD_PANEL_WIDTH || y >= EPD_PANEL_HEIGHT)
         return;
 #endif
-    for(int i = x; i < x + len; i++) {
-        il0323_buffer[y * (EPD_PANEL_WIDTH/8) + i / 8] |= 1 << (i % 8);
-    }
 
-    return;
-}
-
-void il0323_v_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len) {
-    struct il0323_data *driver = dev->data;
-
-#ifdef IL0323_CLAMP_BOUNDS
-    if((uint16_t)len + (uint16_t)y > EPD_PANEL_HEIGHT) {
-        len = EPD_PANEL_WIDTH - x;
-    }
-    // Don't draw outside bounds
-    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
-        return;
-#endif
-    for(int i = y; i < y + len; i++) {
-        il0323_buffer[i * (EPD_PANEL_WIDTH/8) + x / 8] |= 1 << (x % 8);
-    }
+    il0323_buffer[y * (EPD_PANEL_WIDTH/8) + x / 8] &= ~(1 << (7 - (x % 8)));
 
     return;
 }
@@ -508,9 +490,46 @@ void il0323_clear_pixel (const struct device *dev, uint8_t x, uint8_t y) {
 
 #ifdef IL0323_CLAMP_BOUNDS
     // Don't draw outside bounds
-    if(x <= EPD_PANEL_WIDTH && y <= EPD_PANEL_HEIGHT)
+    if(x >= EPD_PANEL_WIDTH || y >= EPD_PANEL_HEIGHT)
+        return;
 #endif
-    il0323_buffer[y * (EPD_PANEL_WIDTH/8) + x / 8] &= ~(1 << (x % 8));
+    il0323_buffer[y * (EPD_PANEL_WIDTH/8) + x / 8] |= 1 << (7 - (x % 8));
+
+    return;
+}
+
+void il0323_h_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len) {
+    struct il0323_data *driver = dev->data;
+
+#ifdef IL0323_CLAMP_BOUNDS
+    if((uint16_t)len + (uint16_t)x >= EPD_PANEL_WIDTH) {
+        len = EPD_PANEL_WIDTH - x - 1;
+    }
+    // Don't draw outside bounds
+    if(x >= EPD_PANEL_WIDTH || y >= EPD_PANEL_HEIGHT)
+        return;
+#endif
+    for(int i = x; i < x + len; i++) {
+        il0323_buffer[y * (EPD_PANEL_WIDTH/8) + i / 8] &= ~(1 << (7 - (i % 8)));
+    }
+
+    return;
+}
+
+void il0323_v_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len) {
+    struct il0323_data *driver = dev->data;
+
+#ifdef IL0323_CLAMP_BOUNDS
+    if((uint16_t)len + (uint16_t)y >= EPD_PANEL_HEIGHT) {
+        len = EPD_PANEL_HEIGHT - y - 1;
+    }
+    // Don't draw outside bounds
+    if(x >= EPD_PANEL_WIDTH || y >= EPD_PANEL_HEIGHT)
+        return;
+#endif
+    for(int i = y; i < y + len; i++) {
+        il0323_buffer[i * (EPD_PANEL_WIDTH/8) + x / 8] &= ~(1 << (7 - (x % 8)));
+    }
 
     return;
 }
@@ -601,7 +620,7 @@ static int il0323_init (const struct device *dev) {
 
     il0323_busy_wait(driver);
 
-    il0323_hibernate(driver);
+    il0323_hibernate(dev);
     
 
     return 0;

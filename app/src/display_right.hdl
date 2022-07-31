@@ -2,6 +2,22 @@
 #const B_MINS    2
 #const B_HIDEBAT 3
 
+#img CONN_ICON (14, 13)
+    00000000000000
+    00000111100000
+    00001100110000
+    00011000011000
+    00110111101100
+    01101100110110
+    11011000011011
+    00110111101100
+    00001100110000
+    00011000011000
+    00000011000000
+    00000111100000
+    00000011000000
+;
+
 #img BATTERY_ICON (10, 16)
     0001111000
     1111111111
@@ -23,14 +39,14 @@
 
 <box flexdir="row">
     <box flex=1 flexdir="col">
-        <box>
-            TEST
+        <box img=CONN_ICON size=2>
+
         </box>
-        <box img=BATTERY_ICON size=1>
+        <box img=BATTERY_ICON size=2>
             
         </box>
     </box>
-    <box flex=5 flexdir="row">
+    <box flex=2 flexdir="row">
         <box size=3>
             12\n32
         </box>

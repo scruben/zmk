@@ -22,7 +22,7 @@ void il0323_clear_area (const struct device *dev, uint8_t x, uint8_t y, uint8_t 
  * @param x 
  * @param y 
  */
-void il0323_set_pixel (const struct device *dev, uint8_t x, uint8_t y);
+void il0323_set_pixel (const struct device *dev, uint16_t x, uint16_t y);
 
 /**
  * @brief Clears a pixel in the buffer
@@ -64,5 +64,13 @@ void il0323_h_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len)
  * @param len 
  */
 void il0323_v_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len);
+
+/**
+ * @brief Hibernate display
+ * 
+ * @param driver 
+ * @return int 
+ */
+int il0323_hibernate (const struct device *dev);
 
 #endif
