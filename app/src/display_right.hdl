@@ -47,7 +47,7 @@
         </box>
     </box>
     <box flex=2 flexdir="row">
-        <box size=3>
+        <box size=5>
             12\n32
         </box>
     </box>
