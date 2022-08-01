@@ -57,6 +57,6 @@ config DISPLAY_LOG_LEVEL
 	default 1
 
 config BT_PERIPHERAL_PREF_LATENCY
-	default 8
+	default 15
 
 endif # BOARD_HIDERGO_SPLIT_LEFT || BOARD_HIDERGO_SPLIT_RIGHT
