@@ -35,7 +35,7 @@ static void out_ready_cb(const struct device *dev) {
 
 static const struct hid_ops ops = {
     .int_in_ready = in_ready_cb,
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+#ifdef CONFIG_ENABLE_HID_INT_OUT_EP
     .int_out_ready = out_ready_cb
 #endif
 };
