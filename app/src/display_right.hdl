@@ -2,41 +2,9 @@
 #const B_VIEW   2
 #const B_BATT   3
 #const B_RFSH   4
+#const B_BATT_SPRITE   5
 
-#img CONN_ICON (14, 13)
-    00000000000000
-    00000111100000
-    00001100110000
-    00011000011000
-    00110111101100
-    01101100110110
-    11011000011011
-    00110111101100
-    00001100110000
-    00011000011000
-    00000011000000
-    00000111100000
-    00000011000000
-;
-
-#img BATTERY_ICON (10, 16)
-    0001111000
-    1111111111
-    1111111111
-    1100000011
-    1100000011
-    1100000011
-    1100000011
-    1100000011
-    1100000011
-    1100000011
-    1100000011
-    1101111011
-    1101111011
-    1100000011
-    1111111111
-    1111111111
-;
+#img KB_ICONS (0, 0, 24, 24) "kb-icons.bmp"
 
 <switch value=$B_VIEW>
     <switch id="VIEW_SPLASH" value=$B_ROLE>
@@ -60,7 +28,7 @@
     <box id="VIEW_MAIN" flexdir="row">
         <box flexdir="col" flex=5>
             <box flexdir="row">
-                <box size=2 img=CONN_ICON flex=5>
+                <box size=1 img=KB_ICONS sprite=3 flex=5>
                 
                 </box>
                 <box bind=[B_RFSH] size=1 flex=1>
@@ -68,7 +36,7 @@
                 </box>
             </box>
             <box flexdir="row">
-                <box size=2 img=BATTERY_ICON flex=5>
+                <box size=1 img=KB_ICONS sprite=$B_BATT_SPRITE flex=5>
                 
                 </box>
                 <box bind=[B_BATT] size=2 flex=1>
