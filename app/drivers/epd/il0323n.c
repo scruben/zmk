@@ -46,6 +46,8 @@ struct il0323_data {
 
 // Pixel buffer
 static uint8_t il0323_buffer[1280];
+static uint8_t il0323_last_buffer[1280];
+
 
 // Initialization programs
 // 1B command, 1B data length, xB data
@@ -364,6 +366,7 @@ static int il0323_init_buffer (struct device *dev) {
 
     // Reset buffer
     memset(il0323_buffer, 0xFF, sizeof(il0323_buffer));
+    memset(il0323_last_buffer, 0xFF, sizeof(il0323_last_buffer));
 
     // Init old data
     if (il0323_write_reg(driver, 0x10, il0323_buffer, sizeof(il0323_buffer))) {
@@ -388,6 +391,18 @@ int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t
         k_msleep(10);
         il0323_driver_init_partial(dev);
     }
+
+    // Init old data
+    if (il0323_write_reg(driver, 0x10, il0323_last_buffer, sizeof(il0323_last_buffer))) {
+        return -EIO;
+    }
+
+    // Init new data
+    if (il0323_write_reg(driver, 0x13, il0323_buffer, sizeof(il0323_buffer))) {
+        return -EIO;
+    }
+
+    memcpy(il0323_last_buffer, il0323_buffer, sizeof(il0323_last_buffer));
 
     il0323_power(dev->data, true);
 
@@ -423,11 +438,6 @@ int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t
 
     // Set area
     if(il0323_set_area(dev, x1, y1, w1, h1)) {
-        return -EIO;
-    }
-
-    // Init new data
-    if (il0323_write_reg(driver, 0x13, il0323_buffer, sizeof(il0323_buffer))) {
         return -EIO;
     }
     

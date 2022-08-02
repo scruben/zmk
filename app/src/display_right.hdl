@@ -1,6 +1,7 @@
-#const B_HOURS   1
-#const B_MINS    2
-#const B_HIDEBAT 3
+#const B_ROLE   1
+#const B_VIEW   2
+#const B_BATT   3
+#const B_RFSH   4
 
 #img CONN_ICON (14, 13)
     00000000000000
@@ -37,18 +38,46 @@
     1111111111
 ;
 
-<box flexdir="row">
-    <box flex=1 flexdir="col">
-        <box img=CONN_ICON size=2>
-
+<switch value=$B_VIEW>
+    <switch id="VIEW_SPLASH" value=$B_ROLE>
+        <box id="LEFT" flexdir="row" size=5>
+            <box flex=1 size=2>
+                hid:
+            </box>
+            <box flex=3 size=4>
+                SP
+            </box>
         </box>
-        <box img=BATTERY_ICON size=2>
-            
+        <box id="RIGHT" flexdir="row" size=5>
+            <box flex=1 size=2>
+                ergo
+            </box>
+            <box flex=3 size=4>
+                LIT
+            </box>
+        </box>
+    </switch>
+    <box id="VIEW_MAIN" flexdir="row">
+        <box flexdir="col" flex=5>
+            <box flexdir="row">
+                <box size=2 img=CONN_ICON flex=5>
+                
+                </box>
+                <box bind=[B_RFSH] size=1 flex=1>
+                    RFSH\n%i
+                </box>
+            </box>
+            <box flexdir="row">
+                <box size=2 img=BATTERY_ICON flex=5>
+                
+                </box>
+                <box bind=[B_BATT] size=2 flex=1>
+                    %i
+                </box>
+            </box>
+        </box>
+        <box size=4 flex=10>
+            SP\nLIT
         </box>
     </box>
-    <box flex=2 flexdir="row">
-        <box size=5>
-            12\n32
-        </box>
-    </box>
-</box>
+</switch>
