@@ -313,7 +313,6 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
     return err;
 }
 
-K_THREAD_STACK_DEFINE(thread_stack, 2000);
 static int iqs5xx_init(const struct device *dev) {
     LOG_DBG("IQS5xx INIT\r\n");
     struct iqs5xx_data *data = dev->data;
@@ -351,7 +350,6 @@ static int iqs5xx_init(const struct device *dev) {
 
     return 0;
 }
-
 
 static const struct sensor_driver_api iqs5xx_driver_api = {
     .trigger_set = iqs5xx_trigger_set,

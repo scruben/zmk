@@ -5,6 +5,7 @@
 #include <logging/log.h>
 #include "../drivers/epd/il0323n.h"
 #include <zmk/battery.h>
+#include <bluetooth/hci.h>
 
 static const struct device *display;
 
@@ -184,6 +185,9 @@ int battery_percent = 0;
 // Battery sprite, calculated from battery percent
 int battery_sprite = 0;
 
+// Bluetooth rssi
+int bt_rssi = 0;
+
 // Sprite offset for battery icons
 #define SPRITES_OFFSET_BATTERY  9
 // Battery sprite count
@@ -194,9 +198,15 @@ void update_battery_sprite () {
     battery_sprite = SPRITES_BATTERY_COUNT - (((battery_percent >= 100 ? 99 : battery_percent) * SPRITES_BATTERY_COUNT) / 100) - 1 + SPRITES_OFFSET_BATTERY;
 }
 
+void update_bt_rssi () {
+    bt_rssi = 0;
+}
+
 static void display_thread(void *arg, void *unused2, void *unused3) {
+
+    k_msleep(100);
+
     view = VIEW_SPLASH;
-    k_msleep(2000);
     // Initialize HDL
     interface = HDL_CreateInterface(80, 128, HDL_COLORS_MONO, HDL_FEAT_TEXT | HDL_FEAT_LINE_HV);
 
@@ -216,17 +226,19 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     HDL_SetBinding(&interface, "batt", 3, &battery_percent);
     HDL_SetBinding(&interface, "rfsh", 4, &rfsh);
     HDL_SetBinding(&interface, "battsprite", 5, &battery_sprite);
-
+    HDL_SetBinding(&interface, "btrssi", 6, &bt_rssi);
 
     err |= HDL_Build(&interface, HDL_PAGE_OUTPUT, sizeof(HDL_PAGE_OUTPUT));
 
     err |= HDL_Update(&interface);
-
+    il0323_hibernate(display);
+    // Wait splash screen
     k_msleep(2000);
 
     view = VIEW_MAIN;
     battery_percent = zmk_battery_state_of_charge();
     update_battery_sprite();
+    update_bt_rssi();
     err |= HDL_Update(&interface);
 
     il0323_hibernate(display);
@@ -235,6 +247,7 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
         k_msleep(30000);
         battery_percent = zmk_battery_state_of_charge();
         update_battery_sprite();
+        update_bt_rssi();
 
         err |= HDL_Update(&interface);
 
@@ -257,5 +270,5 @@ static int display_init () {
 }
 
 SYS_INIT(display_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
-K_THREAD_DEFINE(display_thr, 4096, display_thread, NULL, NULL, NULL, K_PRIO_COOP(10), 0, 0);
+K_THREAD_DEFINE(display_thr, 4096, display_thread, NULL, NULL, NULL, K_PRIO_PREEMPT(10), 0, 0);
 //#endif

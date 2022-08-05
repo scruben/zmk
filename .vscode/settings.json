@@ -16,7 +16,9 @@
     "log_core.h": "c",
     "util.h": "c",
     "math.h": "c",
-    "source_location": "c"
+    "source_location": "c",
+    "hci.h": "c",
+    "battery.h": "c"
   },
   "python.formatting.provider": "black"
 }

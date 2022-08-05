@@ -614,7 +614,7 @@ static int il0323_init (const struct device *dev) {
 
     // Full mode for refresh
     init_err |= il0323_driver_init_full(dev);
-    il0323_busy_wait(driver);
+    //il0323_busy_wait(driver);
     // Power ON
     init_err |= il0323_power(driver, true);
 
@@ -622,15 +622,15 @@ static int il0323_init (const struct device *dev) {
     init_err |= il0323_init_buffer(dev);
 
     // Refresh
-    init_err |= il0323_refresh(dev, 0, 0, 80, 128);
+    //init_err |= il0323_refresh(dev, 0, 0, 80, 128);
 
 
     // Initialize partial mode
-    init_err |= il0323_driver_init_partial(dev);
+    //init_err |= il0323_driver_init_partial(dev);
 
-    il0323_busy_wait(driver);
+    //il0323_busy_wait(driver);
 
-    il0323_hibernate(dev);
+    //il0323_hibernate(dev);
     
 
     return 0;
