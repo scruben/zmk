@@ -280,32 +280,25 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
     // Set active refresh rate
     *((uint16_t*)wbuff) = SWPEND16(config->activeRefreshRate);
     err |= iqs5xx_write(dev, ActiveRR_adr, wbuff, 2);
-    k_usleep(100);
     // Set idle refresh rate
     *((uint16_t*)wbuff) = SWPEND16(config->idleRefreshRate);
     err |= iqs5xx_write(dev, IdleRR_adr, wbuff, 2);
-    k_usleep(100);
 
     // Set single finger gestures
     err |= iqs5xx_write(dev, SFGestureEnable_adr, &config->singleFingerGestureMask, 1);
-    k_usleep(100);
     // Set multi finger gestures
     err |= iqs5xx_write(dev, MFGestureEnable_adr, &config->multiFingerGestureMask, 1);
-    k_usleep(100);
 
     // Set tap time
     *((uint16_t*)wbuff) = SWPEND16(config->tapTime);
     err |= iqs5xx_write(dev, TapTime_adr, wbuff, 2);
-    k_usleep(100);
 
     // Set tap distance
     *((uint16_t*)wbuff) = SWPEND16(config->tapDistance);
     err |= iqs5xx_write(dev, TapDistance_adr, wbuff, 2);
-    k_usleep(100);
 
     // Set touch multiplier
     err |= iqs5xx_write(dev, GlobalTouchSet_adr, &config->touchMultiplier, 1);
-    k_usleep(100);
 
     // Terminate transaction
     iqs5xx_write(dev, END_WINDOW, 0, 1);
