@@ -547,6 +547,35 @@ void il0323_v_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len)
 
 int init_err = 0;
 
+int il0323_init_regs (const struct device *dev) {
+    struct il0323_data *driver = dev->data;
+
+    // Reset device
+    init_err |= il0323_reset(driver);
+
+    // Full mode for refresh
+    init_err |= il0323_driver_init_full(dev);
+    //il0323_busy_wait(driver);
+    // Power ON
+    init_err |= il0323_power(driver, true);
+
+    // Initialize buffer
+    init_err |= il0323_init_buffer(dev);
+
+    // Refresh
+    //init_err |= il0323_refresh(dev, 0, 0, 80, 128);
+
+
+    // Initialize partial mode
+    //init_err |= il0323_driver_init_partial(dev);
+
+    //il0323_busy_wait(driver);
+
+    //il0323_hibernate(dev);
+
+    return 0;
+}
+
 /**
  * @brief IL0323 Initialization
  * 
@@ -555,8 +584,6 @@ int init_err = 0;
  */
 static int il0323_init (const struct device *dev) {
     struct il0323_data *driver = dev->data;
-
-    LOG_DBG("");
 
     driver->spi_dev = device_get_binding(IL0323_BUS_NAME);
     if (driver->spi_dev == NULL) {
@@ -609,30 +636,6 @@ static int il0323_init (const struct device *dev) {
     driver->spi_config.cs = &driver->cs_ctrl;
 #endif
     
-    // Reset device
-    init_err |= il0323_reset(driver);
-
-    // Full mode for refresh
-    init_err |= il0323_driver_init_full(dev);
-    //il0323_busy_wait(driver);
-    // Power ON
-    init_err |= il0323_power(driver, true);
-
-    // Initialize buffer
-    init_err |= il0323_init_buffer(dev);
-
-    // Refresh
-    //init_err |= il0323_refresh(dev, 0, 0, 80, 128);
-
-
-    // Initialize partial mode
-    //init_err |= il0323_driver_init_partial(dev);
-
-    //il0323_busy_wait(driver);
-
-    //il0323_hibernate(dev);
-    
-
     return 0;
 }
 

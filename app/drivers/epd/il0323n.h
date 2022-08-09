@@ -73,4 +73,12 @@ void il0323_v_line (const struct device *dev, uint8_t x, uint8_t y, uint8_t len)
  */
 int il0323_hibernate (const struct device *dev);
 
+/**
+ * @brief Initialize registers of il0323
+ * 
+ * @param dev 
+ * @return int 
+ */
+int il0323_init_regs (const struct device *dev);
+
 #endif

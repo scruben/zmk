@@ -6,6 +6,7 @@
 #include "../drivers/epd/il0323n.h"
 #include <zmk/battery.h>
 #include <bluetooth/hci.h>
+#include <zmk/ble.h>
 
 static const struct device *display;
 
@@ -205,6 +206,7 @@ void update_bt_rssi () {
 static void display_thread(void *arg, void *unused2, void *unused3) {
 
     k_msleep(100);
+    il0323_init_regs(display);
 
     view = VIEW_SPLASH;
     // Initialize HDL

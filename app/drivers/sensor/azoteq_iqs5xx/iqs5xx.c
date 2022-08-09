@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#ifdef CONFIG_IQS5XX
 #define DT_DRV_COMPAT azoteq_iqs5xx
 
 #include <drivers/gpio.h>
@@ -203,6 +204,17 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
 	ARG_UNUSED(unused3);
     struct iqs5xx_data *data = dev->data;
     struct iqs5xx_config *conf = dev->config;
+
+    // Initialize device registers
+    struct iqs5xx_reg_config regconf = iqs5xx_reg_config_default();
+
+    int err = 0;
+
+    err = iqs5xx_registers_init(dev, &regconf);
+    if(err) {
+        LOG_ERR("Failed to initialize IQS5xx registers!\r\n");
+    }
+
     int nstate = 0;
     int64_t lastSample = 0;
     while (1) {
@@ -317,14 +329,6 @@ static int iqs5xx_init(const struct device *dev) {
     // Configure data ready pin
 	gpio_pin_configure(config->dr_port, config->dr_pin, GPIO_INPUT | config->dr_flags);
 
-    // Initialize device registers
-    struct iqs5xx_reg_config regconf = iqs5xx_reg_config_default();
-
-    err = iqs5xx_registers_init(dev, &regconf);
-    if(err) {
-        LOG_ERR("Failed to initialize IQS5xx registers!\r\n");
-    }
-
     #if CONFIG_IQS5XX_INTERRUPT
 
     // Blocking semaphore as a flag for sensor read
@@ -367,4 +371,6 @@ DEVICE_DT_INST_DEFINE(0, iqs5xx_init, NULL, &iqs5xx_data, &iqs5xx_config,
                       POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, &iqs5xx_driver_api);
 
 			  
-K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(10), 0, 0);
+K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(2), 0, 0);
+
+#endif
