@@ -582,7 +582,7 @@ int il0323_init_regs (const struct device *dev) {
  * @param device 
  * @return int 
  */
-static int il0323_init (const struct device *dev) {
+public static int il0323_init (const struct device *dev) {
     struct il0323_data *driver = dev->data;
 
     driver->spi_dev = device_get_binding(IL0323_BUS_NAME);
