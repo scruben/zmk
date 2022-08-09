@@ -198,6 +198,8 @@ int callbackCnt = 0;
 
 int callbackErr = 0;
 
+static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config);
+
 static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
     const struct device *dev = arg;
 	ARG_UNUSED(unused2);

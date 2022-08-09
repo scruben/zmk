@@ -19,6 +19,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/events/sensor_event.h>
 
 #include <zmk/activity.h>
+#include <display.h>
 
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zmk/usb.h>
@@ -68,6 +69,8 @@ void activity_work_handler(struct k_work *work) {
     int32_t inactive_time = current - activity_last_uptime;
 #if IS_ENABLED(CONFIG_ZMK_SLEEP)
     if (inactive_time > MAX_SLEEP_MS && !is_usb_power_present()) {
+        // Update display
+        display_set_sleep();
         // Put devices in suspend power mode before sleeping
         set_state(ZMK_ACTIVITY_SLEEP);
         pm_power_state_force(0U, (struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});

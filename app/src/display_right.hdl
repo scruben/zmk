@@ -5,6 +5,7 @@
 #const B_BATT_SPRITE   5
 
 #img KB_ICONS (0, 0, 24, 24) "kb-icons.bmp"
+#img SLEEP_ICON "sleep-icon-big.bmp"
 
 <switch value=$B_VIEW>
     <switch id="VIEW_SPLASH" value=$B_ROLE>
@@ -46,6 +47,11 @@
         </box>
         <box size=4 flex=10>
             SP\nLIT
+        </box>
+    </box>
+    <box id="VIEW_SLEEP" flexdir="row">
+        <box img=SLEEP_ICON>
+
         </box>
     </box>
 </switch>
