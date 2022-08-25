@@ -34,6 +34,7 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.tapDistance =               100;
     regconf.touchMultiplier =           0;
     regconf.debounce =                  0;
+    regconf.i2cTimeout =                4;
 
 
     return regconf;
@@ -219,10 +220,11 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
     }
 
     int nstate = 0;
-    int64_t lastSample = 0;
+    uint32_t lastSample = k_uptime_get_32();
     while (1) {
         // Sleep for maximum possible time to maximize processor time for other tasks
         #ifdef CONFIG_IQS5XX_POLL
+            
             k_msleep(4);
 
             // Poll data ready pin
@@ -239,6 +241,7 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
             }
         #elif CONFIG_IQS5XX_INTERRUPT
             k_sem_take(&data->gpio_sem, K_FOREVER);
+
             iqs5xx_sample_fetch(dev);
             // Trigger sensor
             if(data->data_ready_trigger != NULL) {
@@ -321,6 +324,9 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
 
     // Set noise reduction
     err |= iqs5xx_write(dev, ND_ENABLE, 1, 1);
+
+    // Set i2c timeout
+    err |= iqs5xx_write(dev, I2CTimeout_adr, &config->i2cTimeout, 1);
     
     // Terminate transaction
     iqs5xx_write(dev, END_WINDOW, 0, 1);
@@ -351,7 +357,7 @@ static int iqs5xx_init(const struct device *dev) {
 
     callbackErr |= err;
     // Configure data ready interrupt
-    err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_EDGE_RISING);
+    err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_EDGE_TO_ACTIVE);
     callbackErr |= err;
     #endif
 
@@ -380,7 +386,6 @@ static const struct iqs5xx_config iqs5xx_config = {
 DEVICE_DT_INST_DEFINE(0, iqs5xx_init, NULL, &iqs5xx_data, &iqs5xx_config,
                       POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, &iqs5xx_driver_api);
 
-			  
-K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(2), 0, 0);
+K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(10), 0, 0);
 
 #endif
