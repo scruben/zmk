@@ -32,7 +32,7 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP | GESTURE_SCROLLG;
     regconf.tapTime =                   200;
     regconf.tapDistance =               100;
-    regconf.touchMultiplier =           3;
+    regconf.touchMultiplier =           0;
     regconf.debounce =                  0;
 
 
