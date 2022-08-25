@@ -71,6 +71,8 @@ struct iqs5xx_reg_config {
     uint8_t     touchMultiplier;
     // Prox debounce value
     uint8_t     debounce;
+    // i2c timeout in ms
+    uint8_t     i2cTimeout;
 };
 
 // Returns the default register configuration
