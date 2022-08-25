@@ -26,13 +26,14 @@ LOG_MODULE_REGISTER(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 // Default config
 struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     struct iqs5xx_reg_config regconf;
-    regconf.activeRefreshRate =         8;
-    regconf.idleRefreshRate =           32;
+    regconf.activeRefreshRate =         10;
+    regconf.idleRefreshRate =           20;
     regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
     regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP | GESTURE_SCROLLG;
     regconf.tapTime =                   200;
     regconf.tapDistance =               100;
-    regconf.touchMultiplier =           50;
+    regconf.touchMultiplier =           3;
+    regconf.debounce =                  0;
 
 
     return regconf;
@@ -129,7 +130,7 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     int res = iqs5xx_seq_read(dev, GestureEvents0_adr, buffer, 44);
 	iqs5xx_write(dev, END_WINDOW, 0, 1);
     if (res < 0) {
-        LOG_ERR("\ntrackpad res: %d", res);
+        //LOG_ERR("\ntrackpad res: %d", res);
         return res;
     }
 
@@ -314,6 +315,13 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
     // Set touch multiplier
     err |= iqs5xx_write(dev, GlobalTouchSet_adr, &config->touchMultiplier, 1);
 
+    // Set debounce settings
+    err |= iqs5xx_write(dev, ProxDb_adr, &config->debounce, 1);
+    err |= iqs5xx_write(dev, TouchSnapDb_adr, &config->debounce, 1);
+
+    // Set noise reduction
+    err |= iqs5xx_write(dev, ND_ENABLE, 1, 1);
+    
     // Terminate transaction
     iqs5xx_write(dev, END_WINDOW, 0, 1);
 

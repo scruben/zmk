@@ -69,6 +69,8 @@ struct iqs5xx_reg_config {
     uint16_t    tapDistance;
     // Touch multiplier
     uint8_t     touchMultiplier;
+    // Prox debounce value
+    uint8_t     debounce;
 };
 
 // Returns the default register configuration

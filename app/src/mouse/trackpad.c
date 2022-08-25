@@ -23,7 +23,7 @@ LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 // Time in ms to release right click after the gesture
 #define TRACKPAD_RIGHTCLICK_RELEASE_TIME    50
 // Scroll speed divider
-#define SCROLL_SPEED_DIVIDER                10
+#define SCROLL_SPEED_DIVIDER                35
 
 static bool isHolding = false;
 
@@ -133,10 +133,12 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                     // Right click
                     hasGesture = true;
                     trackpad_rightclick();
+                    zmk_hid_mouse_movement_set(0,0);
                     break;
                 case GESTURE_SCROLLG:
                     hasGesture = true;
                     zmk_hid_mouse_scroll_set(-pos_y/SCROLL_SPEED_DIVIDER, pos_x/SCROLL_SPEED_DIVIDER);
+                    zmk_hid_mouse_movement_set(0,0);
                     break;
             }
         }
