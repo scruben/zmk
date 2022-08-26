@@ -18,7 +18,8 @@
     "math.h": "c",
     "source_location": "c",
     "hci.h": "c",
-    "battery.h": "c"
+    "battery.h": "c",
+    "usb_conn_state_changed.h": "c"
   },
   "python.formatting.provider": "black"
 }
