@@ -15,6 +15,8 @@
 #include <zmk/keymap.h>
 #include <zmk/event_manager.h>
 
+#include <hidergod_parser.h>
+
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 static const struct device *hid_dev;
@@ -29,7 +31,8 @@ static void out_ready_cb(const struct device *dev) {
     uint32_t rlen = 0;
     int err = hid_int_ep_read(dev, buff, 64, &rlen);
 
-    LOG_ERR("Recv: %x %x %x %x\r\n", buff[0], buff[1], buff[2], buff[3]);
+    //LOG_ERR("Recv: %x %x %x %x\r\n", buff[0], buff[1], buff[2], buff[3]);
+    hidergod_parse(buff, rlen);
     
 }
 

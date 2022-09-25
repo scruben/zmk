@@ -3,29 +3,13 @@
 #const B_BATT   3
 #const B_RFSH   4
 #const B_BATT_SPRITE   5
+#const B_TIME   7
+#const B_DATE   8
 
 #img KB_ICONS (0, 0, 24, 24) "kb-icons.bmp"
 #img SLEEP_ICON "sleep-icon-big.bmp"
 
 <switch value=$B_VIEW>
-    <switch id="VIEW_SPLASH" value=$B_ROLE>
-        <box id="LEFT" flexdir="row" size=5>
-            <box flex=1 size=2>
-                hid:
-            </box>
-            <box flex=3 size=4>
-                SP
-            </box>
-        </box>
-        <box id="RIGHT" flexdir="row" size=5>
-            <box flex=1 size=2>
-                ergo
-            </box>
-            <box flex=3 size=4>
-                LIT
-            </box>
-        </box>
-    </switch>
     <box id="VIEW_MAIN" flexdir="row">
         <box flexdir="col" flex=5>
             <box flexdir="row">
@@ -45,9 +29,15 @@
                 </box>
             </box>
         </box>
-        <box size=4 flex=10>
-            SP\nLIT
+        <box flex=10 flexdir="row">
+            <box size=4 bind=[B_TIME] flex=2>
+                %s
+            </box>
+            <box size=2 bind=[B_DATE] flex=1>
+                %s
+            </box>
         </box>
+        
     </box>
     <box id="VIEW_SLEEP" flexdir="row">
         <box img=SLEEP_ICON>

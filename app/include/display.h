@@ -3,4 +3,6 @@
 
 void display_set_sleep ();
 
+void display_set_time (int time);
+
 #endif
