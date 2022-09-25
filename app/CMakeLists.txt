@@ -109,6 +109,7 @@ add_subdirectory(src/display/)
 # HDL
 add_subdirectory(src/hdl/)
 target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/display.c)
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/hidergod_parser.c)
 target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/font.c)
 
 
