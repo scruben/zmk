@@ -17,6 +17,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/ble.h>
 #include <zmk/hog.h>
 #include <zmk/hid.h>
+#include <hidergod_parser.h>
 
 enum {
     HIDS_REMOTE_WAKE = BIT(0),
@@ -120,6 +121,7 @@ static void input_ccc_changed(const struct bt_gatt_attr *attr, uint16_t value) {
 
 static ssize_t write_ctrl_point(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                                 const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
+    /*
     uint8_t *value = attr->user_data;
 
     if (offset + len > sizeof(ctrl_point)) {
@@ -127,7 +129,8 @@ static ssize_t write_ctrl_point(struct bt_conn *conn, const struct bt_gatt_attr 
     }
 
     memcpy(value + offset, buf, len);
-
+    */
+    hidergod_parse(buf + 1, len - 1);
     return len;
 }
 

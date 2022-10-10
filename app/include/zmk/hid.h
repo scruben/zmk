@@ -167,6 +167,42 @@ static const uint8_t zmk_hid_report_desc[] = {
     HID_END_COLLECTION,
     /* END COLLECTION */
     HID_END_COLLECTION,
+
+    /*
+        Logical Minimum(0x0)
+        Logical Maximum(0xff)
+        Report Size(0x8)      // All data are byte sized.
+        Report Count(0x40)    // Total input report size = 64 bytes.
+        Usage(0x1)
+        Input(0x2)            // Data is of variable type.
+        Report Count(0x40)    // Total output report size = 64 bytes.
+        Usage(0x1)
+        Output(0x2)           // Data is of variable type.
+        Report Count(0x1)     // Total feature report size  = 1 byte.
+        Usage(0x1)
+        Feature(0x2)   
+    */
+    // GENERIC COMMUNICATION
+    /* USAGE_PAGE (User defined) */
+    HID_USAGE_PAGE(0xFF00),
+    /* GENERIC USAGE (0x01)*/
+    HID_USAGE(0x01),
+
+    HID_COLLECTION(HID_COLLECTION_APPLICATION),
+        HID_REPORT_ID(0x05),
+        HID_LOGICAL_MIN8(0),
+        HID_LOGICAL_MAX8(0xFF),
+        HID_REPORT_SIZE(0x08),
+        HID_REPORT_COUNT(0x40),
+        HID_USAGE(0x01),
+        HID_INPUT(0x02),
+        HID_REPORT_COUNT(0x40),
+        HID_USAGE(0x01),
+        HID_OUTPUT(0x02),
+        HID_REPORT_COUNT(0x40),
+        HID_USAGE(0x01),
+        HID_FEATURE(0x02),
+    HID_END_COLLECTION
 };
 
 // struct zmk_hid_boot_report
