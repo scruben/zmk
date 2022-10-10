@@ -242,8 +242,9 @@ void display_set_sleep () {
     HDL_Update(&interface);
 }
 
-void display_set_time (int time) {
-    recv_timestamp = time;
+void display_set_time (int32_t time, int32_t timezone) {
+    LOG_ERR("TZ %i******************", timezone);
+    recv_timestamp = time + timezone;
     _clock_last_update = k_uptime_get();
     _update_clock();
     //HDL_Update(&interface);

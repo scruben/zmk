@@ -29,10 +29,9 @@ static void out_ready_cb(const struct device *dev) {
     uint8_t buff[64];
     memset(buff, 0, 64);
     uint32_t rlen = 0;
-    int err = hid_int_ep_read(dev, buff, 64, &rlen);
 
-    hidergod_parse(buff + 1, rlen - 1);
-    
+    int err = hid_int_ep_read(dev, buff, 64, &rlen);
+    hidergod_parse(buff, rlen);
 }
 
 static const struct hid_ops ops = {
