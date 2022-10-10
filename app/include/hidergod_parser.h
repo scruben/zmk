@@ -8,7 +8,7 @@
 // Package header
 struct __attribute__((packed)) hidergod_msg_header {
     // Report ID (always 0)
-    //uint8_t reportId; // Not received for some reason?
+    uint8_t reportId; // Not received for some reason?
     // Command
     uint8_t cmd;
     // Total message size
