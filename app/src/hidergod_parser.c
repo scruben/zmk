@@ -57,6 +57,7 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
     data_buffer_len += len;
 
     if(data_buffer_len == data_header.chunkSize) {
+        data_buffer_len = 0;
         // Data length matches - parse it
         switch((enum hidergod_cmd_t)data_header.cmd) {
             case HIDERGOD_CMD_SET_VALUE:
@@ -67,7 +68,6 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
                 err = -2;
                 break;
         }
-        data_buffer_len = 0;
     }
     else if(data_buffer_len > data_header.chunkSize) {
         // Message too long - reset

@@ -17,6 +17,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/ble.h>
 #include <zmk/hog.h>
 #include <zmk/hid.h>
+#include <display.h>
 #include <hidergod_parser.h>
 
 enum {
@@ -60,6 +61,11 @@ static struct hids_report consumer_input = {
 static struct hids_report mouse_input = {
     .id = 0x04,
     .type = HIDS_INPUT,
+};
+
+static struct hids_report data_output = {
+    .id = 0x05,
+    .type = HIDS_OUTPUT,
 };
 
 static bool host_requests_notification = false;
@@ -121,7 +127,7 @@ static void input_ccc_changed(const struct bt_gatt_attr *attr, uint16_t value) {
 
 static ssize_t write_ctrl_point(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                                 const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
-    /*
+
     uint8_t *value = attr->user_data;
 
     if (offset + len > sizeof(ctrl_point)) {
@@ -129,8 +135,18 @@ static ssize_t write_ctrl_point(struct bt_conn *conn, const struct bt_gatt_attr 
     }
 
     memcpy(value + offset, buf, len);
-    */
-    hidergod_parse(buf + 1, len - 1);
+    return len;
+}
+
+char _rxbuff[65];
+static ssize_t write_rx_buff (struct bt_conn *conn, const struct bt_gatt_attr *attr,
+                                const void *buf, uint16_t len, uint16_t offset, uint8_t flags) {
+
+    // Bluetooth does not contain the report ID (0x05), so we need to have it as the first byte for hidergod_parse
+    _rxbuff[0] = 0x05;
+    memcpy(_rxbuff + 1, buf, len);
+    
+    hidergod_parse(_rxbuff, len + 1);
     return len;
 }
 
@@ -160,6 +176,12 @@ BT_GATT_SERVICE_DEFINE(
     BT_GATT_CCC(input_ccc_changed, BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT),
     BT_GATT_DESCRIPTOR(BT_UUID_HIDS_REPORT_REF, BT_GATT_PERM_READ_ENCRYPT, read_hids_report_ref,
                        NULL, &mouse_input),
+    
+    BT_GATT_CHARACTERISTIC(BT_UUID_HIDS_REPORT, BT_GATT_CHRC_WRITE_WITHOUT_RESP,
+                           BT_GATT_PERM_WRITE, NULL, write_rx_buff, &_rxbuff),
+    BT_GATT_CCC(input_ccc_changed, BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT),
+    BT_GATT_DESCRIPTOR(BT_UUID_HIDS_REPORT_REF, BT_GATT_PERM_READ_ENCRYPT, read_hids_report_ref,
+                       NULL, &data_output),
 
     BT_GATT_CHARACTERISTIC(BT_UUID_HIDS_CTRL_POINT, BT_GATT_CHRC_WRITE_WITHOUT_RESP,
                            BT_GATT_PERM_WRITE, NULL, write_ctrl_point, &ctrl_point));
