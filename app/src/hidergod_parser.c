@@ -49,6 +49,11 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
         memcpy(data_buffer + data_buffer_len, buffer, len);
     }
     else {
+        if(buffer[0] != 0x05) {
+            LOG_ERR("ERR msg header!");
+            err = -2;
+            return err;
+        }
         // New message
         //LOG_ERR("MESSAGE: %i %i\n", len, buffer[1]);
         memcpy(&data_header, (struct hidergod_msg_header*)buffer, sizeof(struct hidergod_msg_header));
@@ -56,7 +61,7 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
     memcpy(data_buffer + data_buffer_len, buffer, len);
     data_buffer_len += len;
 
-    if(data_buffer_len == data_header.chunkSize) {
+    if(data_buffer_len >= data_header.chunkSize) {
         data_buffer_len = 0;
         // Data length matches - parse it
         switch((enum hidergod_cmd_t)data_header.cmd) {
@@ -69,12 +74,14 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
                 break;
         }
     }
+    /*
     else if(data_buffer_len > data_header.chunkSize) {
         // Message too long - reset
         LOG_ERR("Message length does not match one defined in header");
         data_buffer_len = 0;
         err = -3;
     }
+    */
 
 
     return err;
