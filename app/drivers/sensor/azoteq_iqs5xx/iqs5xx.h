@@ -73,6 +73,14 @@ struct iqs5xx_reg_config {
     uint8_t     debounce;
     // i2c timeout in ms
     uint8_t     i2cTimeout;
+    // Filter settings
+    uint8_t     filterSettings;
+    uint8_t     filterDynBottomBeta;
+    uint8_t     filterDynLowerSpeed;
+    uint16_t    filterDynUpperSpeed;
+
+    // Initial scroll distance (px)
+    uint16_t    initScrollDistance;
 };
 
 // Returns the default register configuration
