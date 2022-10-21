@@ -23,73 +23,74 @@ static const uint8_t zmk_hid_report_desc[] = {
     HID_USAGE_PAGE(HID_USAGE_GEN_DESKTOP),
     HID_USAGE(HID_USAGE_GD_KEYBOARD),
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
-    HID_REPORT_ID(0x01),
-    HID_USAGE_PAGE(HID_USAGE_KEY),
-    HID_USAGE_MIN8(HID_USAGE_KEY_KEYBOARD_LEFTCONTROL),
-    HID_USAGE_MAX8(HID_USAGE_KEY_KEYBOARD_RIGHT_GUI),
-    HID_LOGICAL_MIN8(0x00),
-    HID_LOGICAL_MAX8(0x01),
+        HID_REPORT_ID(0x01),
+        HID_USAGE_PAGE(HID_USAGE_KEY),
+        HID_USAGE_MIN8(HID_USAGE_KEY_KEYBOARD_LEFTCONTROL),
+        HID_USAGE_MAX8(HID_USAGE_KEY_KEYBOARD_RIGHT_GUI),
+        HID_LOGICAL_MIN8(0x00),
+        HID_LOGICAL_MAX8(0x01),
 
-    HID_REPORT_SIZE(0x01),
-    HID_REPORT_COUNT(0x08),
-    /* INPUT (Data,Var,Abs) */
-    HID_INPUT(0x02),
+        HID_REPORT_SIZE(0x01),
+        HID_REPORT_COUNT(0x08),
+        /* INPUT (Data,Var,Abs) */
+        HID_INPUT(0x02),
 
-    HID_USAGE_PAGE(HID_USAGE_KEY),
-    HID_REPORT_SIZE(0x08),
-    HID_REPORT_COUNT(0x01),
-    /* INPUT (Cnst,Var,Abs) */
-    HID_INPUT(0x03),
+        HID_USAGE_PAGE(HID_USAGE_KEY),
+        HID_REPORT_SIZE(0x08),
+        HID_REPORT_COUNT(0x01),
+        /* INPUT (Cnst,Var,Abs) */
+        HID_INPUT(0x03),
 
-    HID_USAGE_PAGE(HID_USAGE_KEY),
+        HID_USAGE_PAGE(HID_USAGE_KEY),
 
-#if IS_ENABLED(CONFIG_ZMK_HID_REPORT_TYPE_NKRO)
-    HID_LOGICAL_MIN8(0x00),
-    HID_LOGICAL_MAX8(0x01),
-    HID_USAGE_MIN8(0x00),
-    HID_USAGE_MAX8(ZMK_HID_KEYBOARD_NKRO_MAX_USAGE),
-    HID_REPORT_SIZE(0x01),
-    HID_REPORT_COUNT(ZMK_HID_KEYBOARD_NKRO_MAX_USAGE + 1),
-    /* INPUT (Data,Ary,Abs) */
-    HID_INPUT(0x02),
-#elif IS_ENABLED(CONFIG_ZMK_HID_REPORT_TYPE_HKRO)
-    HID_LOGICAL_MIN8(0x00),
-    HID_LOGICAL_MAX8(0xFF),
-    HID_USAGE_MIN8(0x00),
-    HID_USAGE_MAX8(0xFF),
-    HID_REPORT_SIZE(0x08),
-    HID_REPORT_COUNT(CONFIG_ZMK_HID_KEYBOARD_REPORT_SIZE),
-    /* INPUT (Data,Ary,Abs) */
-    HID_INPUT(0x00),
-#else
-#error "A proper HID report type must be selected"
-#endif
+    #if IS_ENABLED(CONFIG_ZMK_HID_REPORT_TYPE_NKRO)
+        HID_LOGICAL_MIN8(0x00),
+        HID_LOGICAL_MAX8(0x01),
+        HID_USAGE_MIN8(0x00),
+        HID_USAGE_MAX8(ZMK_HID_KEYBOARD_NKRO_MAX_USAGE),
+        HID_REPORT_SIZE(0x01),
+        HID_REPORT_COUNT(ZMK_HID_KEYBOARD_NKRO_MAX_USAGE + 1),
+        /* INPUT (Data,Ary,Abs) */
+        HID_INPUT(0x02),
+    #elif IS_ENABLED(CONFIG_ZMK_HID_REPORT_TYPE_HKRO)
+        HID_LOGICAL_MIN8(0x00),
+        HID_LOGICAL_MAX8(0xFF),
+        HID_USAGE_MIN8(0x00),
+        HID_USAGE_MAX8(0xFF),
+        HID_REPORT_SIZE(0x08),
+        HID_REPORT_COUNT(CONFIG_ZMK_HID_KEYBOARD_REPORT_SIZE),
+        /* INPUT (Data,Ary,Abs) */
+        HID_INPUT(0x00),
+    #else
+    #error "A proper HID report type must be selected"
+    #endif
 
     HID_END_COLLECTION,
+
     HID_USAGE_PAGE(HID_USAGE_CONSUMER),
     HID_USAGE(HID_USAGE_CONSUMER_CONSUMER_CONTROL),
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
-    HID_REPORT_ID(0x02),
-    HID_USAGE_PAGE(HID_USAGE_CONSUMER),
+        HID_REPORT_ID(0x02),
+        HID_USAGE_PAGE(HID_USAGE_CONSUMER),
 
-#if IS_ENABLED(CONFIG_ZMK_HID_CONSUMER_REPORT_USAGES_BASIC)
-    HID_LOGICAL_MIN8(0x00),
-    HID_LOGICAL_MAX16(0xFF, 0x00),
-    HID_USAGE_MIN8(0x00),
-    HID_USAGE_MAX8(0xFF),
-    HID_REPORT_SIZE(0x08),
-#elif IS_ENABLED(CONFIG_ZMK_HID_CONSUMER_REPORT_USAGES_FULL)
-    HID_LOGICAL_MIN8(0x00),
-    HID_LOGICAL_MAX16(0xFF, 0x0F),
-    HID_USAGE_MIN8(0x00),
-    HID_USAGE_MAX16(0xFF, 0x0F),
-    HID_REPORT_SIZE(0x10),
-#else
-#error "A proper consumer HID report usage range must be selected"
-#endif
-    /* REPORT_COUNT (CONFIG_ZMK_HID_CONSUMER_REPORT_SIZE) */
-    HID_REPORT_COUNT(CONFIG_ZMK_HID_CONSUMER_REPORT_SIZE),
-    HID_INPUT(0x00),
+    #if IS_ENABLED(CONFIG_ZMK_HID_CONSUMER_REPORT_USAGES_BASIC)
+        HID_LOGICAL_MIN8(0x00),
+        HID_LOGICAL_MAX16(0xFF, 0x00),
+        HID_USAGE_MIN8(0x00),
+        HID_USAGE_MAX8(0xFF),
+        HID_REPORT_SIZE(0x08),
+    #elif IS_ENABLED(CONFIG_ZMK_HID_CONSUMER_REPORT_USAGES_FULL)
+        HID_LOGICAL_MIN8(0x00),
+        HID_LOGICAL_MAX16(0xFF, 0x0F),
+        HID_USAGE_MIN8(0x00),
+        HID_USAGE_MAX16(0xFF, 0x0F),
+        HID_REPORT_SIZE(0x10),
+    #else
+    #error "A proper consumer HID report usage range must be selected"
+    #endif
+        /* REPORT_COUNT (CONFIG_ZMK_HID_CONSUMER_REPORT_SIZE) */
+        HID_REPORT_COUNT(CONFIG_ZMK_HID_CONSUMER_REPORT_SIZE),
+        HID_INPUT(0x00),
     /* END COLLECTION */
     HID_END_COLLECTION,
 
@@ -99,109 +100,95 @@ static const uint8_t zmk_hid_report_desc[] = {
     HID_USAGE(HID_USAGE_GD_MOUSE),
     /* COLLECTION (Application) */
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
-    /* REPORT ID (4) */
-    HID_REPORT_ID(0x04),
-    /* USAGE (Pointer) */
-    HID_USAGE(HID_USAGE_GD_POINTER),
-    /* COLLECTION (Physical) */
-    HID_COLLECTION(HID_COLLECTION_PHYSICAL),
-    /* USAGE_PAGE (Button) */
-    HID_USAGE_PAGE(HID_USAGE_BUTTON),
-    /* USAGE_MINIMUM (0x1) (button 1?) */
-    HID_USAGE_MIN8(0x01),
-    /* USAGE_MAXIMUM (0x10) (button 5? Buttons up to 8 still work) */
-    HID_USAGE_MAX8(0x10),
-    /* LOGICAL_MINIMUM (0) */
-    HID_LOGICAL_MIN8(0x00),
-    /* LOGICAL_MAXIMUM (1) */
-    HID_LOGICAL_MAX8(0x01),
-    /* REPORT_SIZE (1) */
-    HID_REPORT_SIZE(0x01),
-    /* REPORT_COUNT (16) */
-    HID_REPORT_COUNT(0x10),
-    /* INPUT (Data,Var,Abs) */
-    HID_INPUT(0x02),
-    /* USAGE_PAGE (Generic Desktop) */
-    HID_USAGE_PAGE(HID_USAGE_GD),
-    /* LOGICAL_MINIMUM (-32767) */
-    HID_LOGICAL_MIN16(0x01, 0x80),
-    /* LOGICAL_MAXIMUM (32767) */
-    HID_LOGICAL_MAX16(0xFF, 0x7F),
-    /* REPORT_SIZE (16) */
-    HID_REPORT_SIZE(0x10),
-    /* REPORT_COUNT (2) */
-    HID_REPORT_COUNT(0x02),
-    /* USAGE (X) */ // Vertical scroll
-    HID_USAGE(HID_USAGE_GD_X),
-    /* USAGE (Y) */
-    HID_USAGE(HID_USAGE_GD_Y),
-    /* Input (Data,Var,Rel) */
-    HID_INPUT(0x06),
-    /* LOGICAL_MINIMUM (-127) */
-    HID_LOGICAL_MIN8(0x81),
-    /* LOGICAL_MAXIMUM (127) */
-    HID_LOGICAL_MAX8(0x7F),
-    /* REPORT_SIZE (8) */
-    HID_REPORT_SIZE(0x08),
-    /* REPORT_COUNT (1) */
-    HID_REPORT_COUNT(0x01),
-    /* USAGE (Wheel) */
-    HID_USAGE(HID_USAGE_GD_WHEEL),
-    /* Input (Data,Var,Rel) */
-    HID_INPUT(0x06),
-    /* USAGE_PAGE (Consumer) */ // Horizontal scroll
-    HID_USAGE_PAGE(HID_USAGE_CONSUMER),
-    /* USAGE (AC Pan) */
-    0x0A,
-    0x38,
-    0x02,
-    /* LOGICAL_MINIMUM (-127) */
-    HID_LOGICAL_MIN8(0x81),
-    /* LOGICAL_MAXIMUM (127) */
-    HID_LOGICAL_MAX8(0x7F),
-    /* REPORT_COUNT (1) */
-    HID_REPORT_COUNT(0x01),
-    /* Input (Data,Var,Rel) */
-    HID_INPUT(0x06),
-    /* END COLLECTION */
-    HID_END_COLLECTION,
+        /* REPORT ID (4) */
+        HID_REPORT_ID(0x04),
+        /* USAGE (Pointer) */
+        HID_USAGE(HID_USAGE_GD_POINTER),
+        /* COLLECTION (Physical) */
+        HID_COLLECTION(HID_COLLECTION_PHYSICAL),
+            /* USAGE_PAGE (Button) */
+            HID_USAGE_PAGE(HID_USAGE_BUTTON),
+            /* USAGE_MINIMUM (0x1) (button 1?) */
+            HID_USAGE_MIN8(0x01),
+            /* USAGE_MAXIMUM (0x10) (button 5? Buttons up to 8 still work) */
+            HID_USAGE_MAX8(0x10),
+            /* LOGICAL_MINIMUM (0) */
+            HID_LOGICAL_MIN8(0x00),
+            /* LOGICAL_MAXIMUM (1) */
+            HID_LOGICAL_MAX8(0x01),
+            /* REPORT_SIZE (1) */
+            HID_REPORT_SIZE(0x01),
+            /* REPORT_COUNT (16) */
+            HID_REPORT_COUNT(0x10),
+            /* INPUT (Data,Var,Abs) */
+            HID_INPUT(0x02),
+            /* USAGE_PAGE (Generic Desktop) */
+            HID_USAGE_PAGE(HID_USAGE_GD),
+            /* LOGICAL_MINIMUM (-32767) */
+            HID_LOGICAL_MIN16(0x01, 0x80),
+            /* LOGICAL_MAXIMUM (32767) */
+            HID_LOGICAL_MAX16(0xFF, 0x7F),
+            /* REPORT_SIZE (16) */
+            HID_REPORT_SIZE(0x10),
+            /* REPORT_COUNT (2) */
+            HID_REPORT_COUNT(0x02),
+            /* USAGE (X) */ // Vertical scroll
+            HID_USAGE(HID_USAGE_GD_X),
+            /* USAGE (Y) */
+            HID_USAGE(HID_USAGE_GD_Y),
+            /* Input (Data,Var,Rel) */
+            HID_INPUT(0x06),
+            /* LOGICAL_MINIMUM (-127) */
+            HID_LOGICAL_MIN8(0x81),
+            /* LOGICAL_MAXIMUM (127) */
+            HID_LOGICAL_MAX8(0x7F),
+            /* REPORT_SIZE (8) */
+            HID_REPORT_SIZE(0x08),
+            /* REPORT_COUNT (1) */
+            HID_REPORT_COUNT(0x01),
+            /* USAGE (Wheel) */
+            HID_USAGE(HID_USAGE_GD_WHEEL),
+            /* Input (Data,Var,Rel) */
+            HID_INPUT(0x06),
+            /* USAGE_PAGE (Consumer) */ // Horizontal scroll
+            HID_USAGE_PAGE(HID_USAGE_CONSUMER),
+            /* USAGE (AC Pan) */
+            0x0A,
+            0x38,
+            0x02,
+            /* LOGICAL_MINIMUM (-127) */
+            HID_LOGICAL_MIN8(0x81),
+            /* LOGICAL_MAXIMUM (127) */
+            HID_LOGICAL_MAX8(0x7F),
+            /* REPORT_COUNT (1) */
+            HID_REPORT_COUNT(0x01),
+            /* Input (Data,Var,Rel) */
+            HID_INPUT(0x06),
+        /* END COLLECTION */
+        HID_END_COLLECTION,
     /* END COLLECTION */
     HID_END_COLLECTION,
 
-    /*
-        Logical Minimum(0x0)
-        Logical Maximum(0xff)
-        Report Size(0x8)      // All data are byte sized.
-        Report Count(0x40)    // Total input report size = 64 bytes.
-        Usage(0x1)
-        Input(0x2)            // Data is of variable type.
-        Report Count(0x40)    // Total output report size = 64 bytes.
-        Usage(0x1)
-        Output(0x2)           // Data is of variable type.
-        Report Count(0x1)     // Total feature report size  = 1 byte.
-        Usage(0x1)
-        Feature(0x2)   
-    */
     // GENERIC COMMUNICATION
     /* USAGE_PAGE (User defined) */
-    HID_USAGE_PAGE(0xFF00),
-    /* GENERIC USAGE (0x01)*/
+    //HID_USAGE_PAGE(HID_USAGE_GEN_DESKTOP),
+    0x06,           0x00, 0xFF,
+    //HID_USAGE_PAGE(HID_USAGE_CONSUMER),
     HID_USAGE(0x01),
 
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
         HID_REPORT_ID(0x05),
-        HID_LOGICAL_MIN8(0),
-        HID_LOGICAL_MAX8(0xFF),
+        HID_LOGICAL_MIN8(0x00),
+        HID_LOGICAL_MAX16(0xFF, 0x00),
         HID_REPORT_SIZE(0x08),
-        HID_REPORT_COUNT(0x40),
-        HID_USAGE(0x01),
+        HID_REPORT_COUNT(0x3F),
+        HID_USAGE(0x00),
         HID_INPUT(0x02),
-        HID_REPORT_COUNT(0x40),
-        HID_USAGE(0x01),
+
+        HID_REPORT_SIZE(0x08),
+        HID_REPORT_COUNT(0x3F),
+        HID_USAGE(0x00),
         HID_OUTPUT(0x02),
-        HID_REPORT_COUNT(0x40),
-        HID_USAGE(0x01),
-        HID_FEATURE(0x02),
     HID_END_COLLECTION
 };
 
