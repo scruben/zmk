@@ -35,7 +35,12 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.touchMultiplier =           0;
     regconf.debounce =                  0;
     regconf.i2cTimeout =                4;
+    regconf.filterSettings =            MAV_FILTER | IIR_FILTER /* | IIR_SELECT static mode */;
+    regconf.filterDynBottomBeta =        128;
+    regconf.filterDynLowerSpeed =        1;
+    regconf.filterDynUpperSpeed =        10;
 
+    regconf.initScrollDistance =        1;
 
     return regconf;
 }
@@ -241,7 +246,7 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
             }
         #elif CONFIG_IQS5XX_INTERRUPT
             k_sem_take(&data->gpio_sem, K_FOREVER);
-
+            
             iqs5xx_sample_fetch(dev);
             // Trigger sensor
             if(data->data_ready_trigger != NULL) {
@@ -327,6 +332,16 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
 
     // Set i2c timeout
     err |= iqs5xx_write(dev, I2CTimeout_adr, &config->i2cTimeout, 1);
+
+    // Set filter settings
+    err |= iqs5xx_write(dev, FilterSettings0_adr, &config->filterSettings, 1);
+    err |= iqs5xx_write(dev, DynamicBottomBeta_adr, &config->filterDynBottomBeta, 1);
+    err |= iqs5xx_write(dev, DynamicLowerSpeed_adr, &config->filterDynLowerSpeed, 1);
+    err |= iqs5xx_write(dev, DynamicUpperSpeed_adr, &config->filterDynUpperSpeed, 2);
+
+    // Set initial scroll distance
+    err |= iqs5xx_write(dev, ScrollInitDistance_adr, &config->initScrollDistance, 2);
+
     
     // Terminate transaction
     iqs5xx_write(dev, END_WINDOW, 0, 1);
