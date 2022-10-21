@@ -139,6 +139,7 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                     hasGesture = true;
                     zmk_hid_mouse_scroll_set(-pos_y/SCROLL_SPEED_DIVIDER, pos_x/SCROLL_SPEED_DIVIDER);
                     zmk_hid_mouse_movement_set(0,0);
+                    k_msleep(10);
                     break;
             }
         }
@@ -153,7 +154,6 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                 case GESTURE_TAP_AND_HOLD:
                     //drag n drop
                     trackpad_tap_and_hold(true);
-                    LOG_ERR("TAP AND HOLD");
                     isHolding = true;
             }
         }
