@@ -30,6 +30,9 @@ LOG_MODULE_REGISTER(il0323n, CONFIG_DISPLAY_LOG_LEVEL);
 // Clamp bound values
 #define IL0323_CLAMP_BOUNDS
 
+// How many times to refresh before doing a double reset
+#define IL0323_EXTRA_REFRESH_INT 5
+
 struct il0323_data {
     const struct device *reset;
     const struct device *dc;
@@ -42,6 +45,8 @@ struct il0323_data {
     uint8_t power_on;
     uint8_t partial_mode;
     uint8_t hibernating;
+    // Partial refresh count for IL0323_EXTRA_REFRESH_INT
+    uint16_t p_refresh_cnt;
 };
 
 // Pixel buffer
@@ -455,6 +460,15 @@ int il0323_refresh (struct device *dev, int16_t x, int16_t y, int16_t w, int16_t
     if (il0323_write_reg(driver, 0x92, NULL, 0)) {
         return -EIO;
     }
+    // Check for double refresh
+    if(driver->p_refresh_cnt >= (uint16_t)IL0323_EXTRA_REFRESH_INT) {
+        // Reset last buffer to white, to trigger refresh for black pixels
+        memset(il0323_last_buffer, 0xFF, sizeof(il0323_last_buffer));
+        driver->p_refresh_cnt = 0;
+        // Call refresh
+        return il0323_refresh(dev, x, y, w, h);
+    }
+    driver->p_refresh_cnt++;
 
     return 0;
 }
