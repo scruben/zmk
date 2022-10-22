@@ -4,7 +4,7 @@
  *
  * SPDX-License-Identifier: MIT
  */
-
+#define CONFIG_IQS5XX
 #ifdef CONFIG_IQS5XX
 #define DT_DRV_COMPAT azoteq_iqs5xx
 
@@ -26,8 +26,8 @@ LOG_MODULE_REGISTER(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 // Default config
 struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     struct iqs5xx_reg_config regconf;
-    regconf.activeRefreshRate =         10;
-    regconf.idleRefreshRate =           20;
+    regconf.activeRefreshRate =         8;
+    regconf.idleRefreshRate =           100;
     regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
     regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP | GESTURE_SCROLLG;
     regconf.tapTime =                   200;
@@ -36,11 +36,11 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.debounce =                  0;
     regconf.i2cTimeout =                4;
     regconf.filterSettings =            MAV_FILTER | IIR_FILTER /* | IIR_SELECT static mode */;
-    regconf.filterDynBottomBeta =        128;
-    regconf.filterDynLowerSpeed =        1;
-    regconf.filterDynUpperSpeed =        10;
+    regconf.filterDynBottomBeta =        50;
+    regconf.filterDynLowerSpeed =        4;
+    regconf.filterDynUpperSpeed =        20;
 
-    regconf.initScrollDistance =        1;
+    regconf.initScrollDistance =        0;
 
     return regconf;
 }
