@@ -4,7 +4,7 @@
  *
  * SPDX-License-Identifier: MIT
  */
-#define CONFIG_IQS5XX
+//#define CONFIG_IQS5XX
 #ifdef CONFIG_IQS5XX
 #define DT_DRV_COMPAT azoteq_iqs5xx
 
@@ -38,7 +38,7 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.filterSettings =            MAV_FILTER | IIR_FILTER /* | IIR_SELECT static mode */;
     regconf.filterDynBottomBeta =        50;
     regconf.filterDynLowerSpeed =        4;
-    regconf.filterDynUpperSpeed =        20;
+    regconf.filterDynUpperSpeed =        5120;
 
     regconf.initScrollDistance =        0;
 
@@ -337,10 +337,12 @@ static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_
     err |= iqs5xx_write(dev, FilterSettings0_adr, &config->filterSettings, 1);
     err |= iqs5xx_write(dev, DynamicBottomBeta_adr, &config->filterDynBottomBeta, 1);
     err |= iqs5xx_write(dev, DynamicLowerSpeed_adr, &config->filterDynLowerSpeed, 1);
-    err |= iqs5xx_write(dev, DynamicUpperSpeed_adr, &config->filterDynUpperSpeed, 2);
+    *((uint16_t*)wbuff) = SWPEND16(config->filterDynUpperSpeed);
+    err |= iqs5xx_write(dev, DynamicUpperSpeed_adr, wbuff, 2);
 
     // Set initial scroll distance
-    err |= iqs5xx_write(dev, ScrollInitDistance_adr, &config->initScrollDistance, 2);
+    *((uint16_t*)wbuff) = SWPEND16(config->initScrollDistance);
+    err |= iqs5xx_write(dev, ScrollInitDistance_adr, wbuff, 2);
 
     
     // Terminate transaction
