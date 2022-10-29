@@ -26,21 +26,23 @@ LOG_MODULE_REGISTER(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 // Default config
 struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     struct iqs5xx_reg_config regconf;
-    regconf.activeRefreshRate =         8;
-    regconf.idleRefreshRate =           100;
+  
+    regconf.activeRefreshRate =         10;
+    regconf.idleRefreshRate =           50;
     regconf.singleFingerGestureMask =   GESTURE_SINGLE_TAP | GESTURE_TAP_AND_HOLD;
     regconf.multiFingerGestureMask =    GESTURE_TWO_FINGER_TAP | GESTURE_SCROLLG;
-    regconf.tapTime =                   200;
-    regconf.tapDistance =               100;
+    regconf.tapTime =                   150;
+    regconf.tapDistance =               25;
     regconf.touchMultiplier =           0;
     regconf.debounce =                  0;
-    regconf.i2cTimeout =                4;
+    regconf.i2cTimeout =                4; 
     regconf.filterSettings =            MAV_FILTER | IIR_FILTER /* | IIR_SELECT static mode */;
-    regconf.filterDynBottomBeta =        50;
-    regconf.filterDynLowerSpeed =        4;
-    regconf.filterDynUpperSpeed =        5120;
+    regconf.filterDynBottomBeta =        5;
+    regconf.filterDynLowerSpeed =        6;
+    regconf.filterDynUpperSpeed =        512;
 
-    regconf.initScrollDistance =        0;
+    regconf.initScrollDistance =        25;
+    
 
     return regconf;
 }
