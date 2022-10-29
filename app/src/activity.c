@@ -71,6 +71,7 @@ void activity_work_handler(struct k_work *work) {
     if (inactive_time > MAX_SLEEP_MS && !is_usb_power_present()) {
         // Update display
         display_set_sleep();
+        k_msleep(10);
         // Put devices in suspend power mode before sleeping
         set_state(ZMK_ACTIVITY_SLEEP);
         pm_power_state_force(0U, (struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
