@@ -22,6 +22,8 @@ LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 #define TRACKPAD_LEFTCLICK_RELEASE_TIME     50
 // Time in ms to release right click after the gesture
 #define TRACKPAD_RIGHTCLICK_RELEASE_TIME    50
+// Time in ms to release right click after the gesture
+#define TRACKPAD_MIDDLECLICK_RELEASE_TIME    50
 // Scroll speed divider
 #define SCROLL_SPEED_DIVIDER                35
 
@@ -47,6 +49,13 @@ static void trackpad_rightclick_release () {
 }
 K_TIMER_DEFINE(rightclick_release_timer, trackpad_rightclick_release, NULL);
 
+struct k_timer middleclick_release_timer;
+static void trackpad_middleclick_release () {
+    zmk_hid_mouse_button_release(2);
+    zmk_endpoints_send_mouse_report();
+}
+K_TIMER_DEFINE(middleclick_release_timer, trackpad_middleclick_release, NULL);
+
 
 static inline void trackpad_leftclick () {
     if(isHolding)  {
@@ -61,6 +70,12 @@ static inline void trackpad_leftclick () {
 static inline void trackpad_rightclick () {
     zmk_hid_mouse_button_press(1);
     k_timer_start(&rightclick_release_timer, K_MSEC(TRACKPAD_RIGHTCLICK_RELEASE_TIME), K_NO_WAIT);
+}
+
+static inline void trackpad_middleclick () {
+    LOG_ERR("SEND MIDDLECLICK");
+    zmk_hid_mouse_button_press(2);
+    k_timer_start(&middleclick_release_timer, K_MSEC(TRACKPAD_MIDDLECLICK_RELEASE_TIME), K_NO_WAIT);
 }
 
 
@@ -123,18 +138,24 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
     }
 
     bool hasGesture = false;
-    // Check if any gesture exists
-    if(gesture & 0x7F) {
 
+    if(fingers > 2) {
+        hasGesture = true;
+        //middleclick¨
+        trackpad_middleclick();
+        zmk_hid_mouse_movement_set(0,0);
+    }
+    // Check if any gesture exists
+    if(gesture & 0x7F && !hasGesture) {
         // Multi touch gestures
         if(multiTouch) {
             switch(gesture & 0x7F) {
                 case GESTURE_TWO_FINGER_TAP:
-                    // Right click
                     hasGesture = true;
+                    // Right click
                     trackpad_rightclick();
                     zmk_hid_mouse_movement_set(0,0);
-                    break;
+                    break;                   
                 case GESTURE_SCROLLG:
                     hasGesture = true;
                     zmk_hid_mouse_scroll_set(-pos_y/SCROLL_SPEED_DIVIDER, pos_x/SCROLL_SPEED_DIVIDER);
@@ -158,7 +179,7 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
             }
         }
     }
-
+    
     //check for tap and hold release
 
     bool inputMoved = false;
