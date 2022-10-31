@@ -199,7 +199,7 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
         data->gesture = d.gesture;
     }
     data->fingers = d.ui8NoOfFingers;
-    LOG_ERR("fingers in iqs5xx %d", d.ui8NoOfFingers);
+    //LOG_ERR("fingers in iqs5xx %d", d.ui8NoOfFingers);
 
     return 0;
 }

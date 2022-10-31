@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2022
  * 
  */
+//#define CONFIG_IQS5XX
 #ifdef CONFIG_IQS5XX
 #include <device.h>
 #include <init.h>
@@ -27,6 +28,9 @@ LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 // Scroll speed divider
 #define SCROLL_SPEED_DIVIDER                35
 
+// Time in ms when three fingers are considered to be tapped
+#define TRACKPAD_THREE_FINGER_CLICK_TIME    300
+
 static bool isHolding = false;
 
 //LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -35,10 +39,20 @@ static const struct device *trackpad;
 // Sensor trigger
 static struct sensor_trigger trig;
 
+// Input active flag
+static bool inputEventActive = false;
+
+static uint8_t lastFingerCount = 0;
+
+static int64_t threeFingerPressTime = 0;
+
+static bool threeFingersPressed = false;
+
 struct k_timer leftclick_release_timer;
 static void trackpad_leftclick_release () {
     zmk_hid_mouse_button_release(0);
     zmk_endpoints_send_mouse_report();
+    inputEventActive = false;
 }
 K_TIMER_DEFINE(leftclick_release_timer, trackpad_leftclick_release, NULL);
 
@@ -46,6 +60,7 @@ struct k_timer rightclick_release_timer;
 static void trackpad_rightclick_release () {
     zmk_hid_mouse_button_release(1);
     zmk_endpoints_send_mouse_report();
+    inputEventActive = false;
 }
 K_TIMER_DEFINE(rightclick_release_timer, trackpad_rightclick_release, NULL);
 
@@ -53,6 +68,7 @@ struct k_timer middleclick_release_timer;
 static void trackpad_middleclick_release () {
     zmk_hid_mouse_button_release(2);
     zmk_endpoints_send_mouse_report();
+    inputEventActive = false;
 }
 K_TIMER_DEFINE(middleclick_release_timer, trackpad_middleclick_release, NULL);
 
@@ -61,21 +77,32 @@ static inline void trackpad_leftclick () {
     if(isHolding)  {
         zmk_hid_mouse_button_release(0);
         isHolding = false;
+        inputEventActive = false;
     } else {
+        if(inputEventActive)
+            return;
+
         zmk_hid_mouse_button_press(0);
         k_timer_start(&leftclick_release_timer, K_MSEC(TRACKPAD_LEFTCLICK_RELEASE_TIME), K_NO_WAIT);
+        inputEventActive = true;
     }
 }
 
 static inline void trackpad_rightclick () {
+    if(inputEventActive)
+        return;
     zmk_hid_mouse_button_press(1);
     k_timer_start(&rightclick_release_timer, K_MSEC(TRACKPAD_RIGHTCLICK_RELEASE_TIME), K_NO_WAIT);
+    inputEventActive = true;
 }
 
 static inline void trackpad_middleclick () {
     LOG_ERR("SEND MIDDLECLICK");
+    if(inputEventActive)
+        return;
     zmk_hid_mouse_button_press(2);
     k_timer_start(&middleclick_release_timer, K_MSEC(TRACKPAD_MIDDLECLICK_RELEASE_TIME), K_NO_WAIT);
+    inputEventActive = true;
 }
 
 
@@ -139,12 +166,21 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
 
     bool hasGesture = false;
 
-    if(fingers > 2) {
-        hasGesture = true;
-        //middleclick¨
-        trackpad_middleclick();
-        zmk_hid_mouse_movement_set(0,0);
+    if(fingers == 3 && !threeFingersPressed) {
+        threeFingerPressTime = k_uptime_get();
+        threeFingersPressed = true;
     }
+    
+    if(fingers == 0) {
+        if(threeFingersPressed && k_uptime_get() - threeFingerPressTime < TRACKPAD_THREE_FINGER_CLICK_TIME) {
+            hasGesture = true;
+            //middleclick
+            trackpad_middleclick();
+            zmk_hid_mouse_movement_set(0,0);
+        }
+        threeFingersPressed = false;
+    }
+
     // Check if any gesture exists
     if(gesture & 0x7F && !hasGesture) {
         // Multi touch gestures
@@ -160,7 +196,7 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                     hasGesture = true;
                     zmk_hid_mouse_scroll_set(-pos_y/SCROLL_SPEED_DIVIDER, pos_x/SCROLL_SPEED_DIVIDER);
                     zmk_hid_mouse_movement_set(0,0);
-                    k_msleep(10);
+                    //k_msleep(10);
                     break;
             }
         }
@@ -191,6 +227,8 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
             inputMoved = true;
         }
     }
+
+    lastFingerCount = fingers;
 
     if(inputMoved || hasGesture) {
         // Send mouse report
