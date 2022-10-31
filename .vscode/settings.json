@@ -20,7 +20,8 @@
     "hci.h": "c",
     "battery.h": "c",
     "usb_conn_state_changed.h": "c",
-    "hidergod_parser.h": "c"
+    "hidergod_parser.h": "c",
+    "endpoints.h": "c"
   },
   "python.formatting.provider": "black"
 }

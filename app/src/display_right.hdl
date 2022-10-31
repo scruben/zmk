@@ -5,6 +5,7 @@
 #const B_BATT_SPRITE   5
 #const B_TIME   7
 #const B_DATE   8
+#const B_CHRG   9
 
 #img KB_ICONS (0, 0, 24, 24) "kb-icons.bmp"
 #img SLEEP_ICON "sleep-icon-big.bmp"
@@ -24,8 +25,15 @@
                 <box size=1 img=KB_ICONS sprite=$B_BATT_SPRITE flex=5>
                 
                 </box>
-                <box bind=[B_BATT] size=2 flex=1>
-                    %i
+                <box flex=1>
+                    <switch value=$B_CHRG>
+                        <box size=2 bind=[B_BATT]>
+                            %i
+                        </box>
+                        <box size=1>
+                            Charge
+                        </box>
+                    </switch>
                 </box>
             </box>
         </box>

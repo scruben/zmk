@@ -10,6 +10,7 @@
 #include <kernel.h>
 #include <drivers/sensor.h>
 #include <bluetooth/services/bas.h>
+#include <zmk/usb.h>
 
 #include <logging/log.h>
 
@@ -49,7 +50,13 @@ static int zmk_battery_update(const struct device *battery) {
     }
 
     if (last_state_of_charge != state_of_charge.val1) {
-        last_state_of_charge = state_of_charge.val1;
+        // 25.10.2022 - No way to measure battery voltage when charging, so set battery voltage to 100
+        if(zmk_usb_is_powered()) {
+            last_state_of_charge = 100;
+        }
+        else {
+            last_state_of_charge = state_of_charge.val1;
+        }
 
         LOG_DBG("Setting BAS GATT battery level to %d.", last_state_of_charge);
 
