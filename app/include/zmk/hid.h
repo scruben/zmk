@@ -180,13 +180,15 @@ static const uint8_t zmk_hid_report_desc[] = {
         HID_REPORT_ID(0x05),
         HID_LOGICAL_MIN8(0x00),
         HID_LOGICAL_MAX16(0xFF, 0x00),
+        /*
         HID_REPORT_SIZE(0x08),
-        HID_REPORT_COUNT(0x3F),
+        HID_REPORT_COUNT(0x0F),
         HID_USAGE(0x00),
         HID_INPUT(0x02),
+        */
 
         HID_REPORT_SIZE(0x08),
-        HID_REPORT_COUNT(0x3F),
+        HID_REPORT_COUNT(0x13),
         HID_USAGE(0x00),
         HID_OUTPUT(0x02),
     HID_END_COLLECTION
