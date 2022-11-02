@@ -182,6 +182,8 @@ int zmk_keymap_apply_position_state(uint8_t source, int layer, uint32_t position
     LOG_DBG("layer: %d position: %d, binding name: %s", layer, position,
             log_strdup(binding.behavior_dev));
 
+    //LOG_ERR("B: %s, V1: %08X, V2: %i", binding.behavior_dev, binding.param1, binding.param2);
+
     behavior = device_get_binding(binding.behavior_dev);
 
     if (!behavior) {

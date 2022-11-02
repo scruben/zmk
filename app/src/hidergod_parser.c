@@ -31,8 +31,9 @@ int hidergod_set_value (uint8_t *data, size_t len) {
     return 0;
 } 
 
-uint8_t data_buffer[64];
+uint8_t *data_buffer = NULL;
 uint8_t data_buffer_len = 0;
+uint8_t chunk_recv_len = 0;
 
 struct hidergod_msg_header data_header;
 
@@ -57,6 +58,7 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
         // New message
         //LOG_ERR("MESSAGE: %i %i\n", len, buffer[1]);
         memcpy(&data_header, (struct hidergod_msg_header*)buffer, sizeof(struct hidergod_msg_header));
+        data_buffer = malloc(data_header.size);
     }
     memcpy(data_buffer + data_buffer_len, buffer, len);
     data_buffer_len += len;
@@ -72,6 +74,11 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
                 // Fail unknown cmd
                 err = -2;
                 break;
+        }
+
+        if(data_buffer) {
+            free(data_buffer);
+            data_buffer = NULL;
         }
     }
     /*

@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define HIDERGOD_REPORT_SIZE        0x20
+
 #define HIDERGOD_VALUE_KEY_TIME     0x01
 
 // Package header
@@ -17,9 +19,11 @@ struct __attribute__((packed)) hidergod_msg_header {
     uint8_t chunkSize;
     // Message chunk offset
     uint16_t chunkOffset;
-    // CRC16
-    uint16_t crc;
+    // CRC8
+    uint8_t crc;
 };
+
+#define HIDERGOD_REPORT_DATA_SIZE (HIDERGOD_REPORT_SIZE - sizeof(struct hidergod_msg_header))
 
 struct __attribute__((packed)) hidergod_msg_set_value {
     // Key
