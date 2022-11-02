@@ -7,7 +7,7 @@ config BOARD
 	default "hidergo_split"
 
 config ZMK_KEYBOARD_NAME
-	default "hid:ergo split"
+	default "Disconnect MK1"
 
 config USB_NRFX
 	default y
