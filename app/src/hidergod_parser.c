@@ -32,43 +32,82 @@ int hidergod_set_value (uint8_t *data, size_t len) {
 } 
 
 uint8_t *data_buffer = NULL;
-uint8_t data_buffer_len = 0;
+uint16_t data_buffer_len = 0;
 uint8_t chunk_recv_len = 0;
 
 struct hidergod_msg_header data_header;
 
+/**
+ * @brief Parses a message
+ * 
+ * @param buffer 
+ * @param len 
+ * @return int 
+ */
 int hidergod_parse (uint8_t *buffer, size_t len) {
     int err = 0;
-    if(data_buffer_len == 0 && len < sizeof(struct hidergod_msg_header)) {
-        // Fail too short message
+    if(chunk_recv_len == 0 && len < sizeof(struct hidergod_msg_header)) {
+        // Fail on too short message
         return -1;
     }
 
-    if(data_buffer_len != 0) {
-        // Continue previous message
-        //LOG_ERR("MESSAGE PART: %i\n", len);
-        memcpy(data_buffer + data_buffer_len, buffer, len);
-    }
-    else {
-        if(buffer[0] != 0x05) {
-            LOG_ERR("ERR msg header!");
-            err = -2;
-            return err;
+    if(data_buffer_len == 0) {
+        // First chunk, copy header to memory
+        memcpy(&data_header, buffer, sizeof(struct hidergod_msg_header));
+        if(data_header.reportId != 0x05) {
+            // Report id must be 0x05
+            return -3;
         }
-        // New message
-        //LOG_ERR("MESSAGE: %i %i\n", len, buffer[1]);
-        memcpy(&data_header, (struct hidergod_msg_header*)buffer, sizeof(struct hidergod_msg_header));
+        // Allocate buffer
+        if(data_buffer != NULL) {
+            free(data_buffer);
+            data_buffer = NULL;
+        }
+        chunk_recv_len = 0;
         data_buffer = malloc(data_header.size);
     }
-    memcpy(data_buffer + data_buffer_len, buffer, len);
-    data_buffer_len += len;
 
-    if(data_buffer_len >= data_header.chunkSize) {
+    size_t cpy_len = 0;
+    if(chunk_recv_len == 0) {
+        // First part of the chunk
+        memcpy(&data_header, buffer, sizeof(struct hidergod_msg_header));
+        cpy_len = data_header.chunkSize <= (len - sizeof(struct hidergod_msg_header)) ? data_header.chunkSize : (len - sizeof(struct hidergod_msg_header));
+        memcpy(data_buffer + data_buffer_len, buffer + sizeof(struct hidergod_msg_header), cpy_len);
+    }
+    else {
+        // Full chunk not received, add data
+        cpy_len = data_header.chunkSize - chunk_recv_len;
+        memcpy(data_buffer + data_buffer_len, buffer, cpy_len);
+    }
+    data_buffer_len += cpy_len;
+    chunk_recv_len += cpy_len;
+    if(chunk_recv_len >= HIDERGOD_REPORT_DATA_SIZE) {
+        // Chunk ended
+        chunk_recv_len = 0;
+    }
+
+    if(data_buffer_len >= data_header.size) {
+        LOG_ERR("MSG PARSED %i vs %i", data_header.size, data_buffer_len);
         data_buffer_len = 0;
-        // Data length matches - parse it
+        chunk_recv_len = 0;
+
+        for(int i = 0; i < data_header.size / 8; i++) {
+            LOG_ERR("%02X %02X %02X %02X %02X %02X %02X %02X", 
+                    data_buffer[i * 8 + 0],
+                    data_buffer[i * 8 + 1],
+                    data_buffer[i * 8 + 2],
+                    data_buffer[i * 8 + 3],
+                    data_buffer[i * 8 + 4],
+                    data_buffer[i * 8 + 5],
+                    data_buffer[i * 8 + 6],
+                    data_buffer[i * 8 + 7]
+            );
+        }
+        
+        // Message ready
         switch((enum hidergod_cmd_t)data_header.cmd) {
             case HIDERGOD_CMD_SET_VALUE:
-                err = hidergod_set_value(data_buffer + sizeof(struct hidergod_msg_header), data_header.chunkSize);
+                err = hidergod_set_value(data_buffer, data_header.size);
                 break;
             default:
                 // Fail unknown cmd
@@ -81,15 +120,6 @@ int hidergod_parse (uint8_t *buffer, size_t len) {
             data_buffer = NULL;
         }
     }
-    /*
-    else if(data_buffer_len > data_header.chunkSize) {
-        // Message too long - reset
-        LOG_ERR("Message length does not match one defined in header");
-        data_buffer_len = 0;
-        err = -3;
-    }
-    */
 
-
-    return err;
+    return 0;
 }

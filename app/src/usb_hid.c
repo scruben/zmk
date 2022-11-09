@@ -31,10 +31,12 @@ static void out_ready_cb(const struct device *dev) {
     uint32_t rlen = 0;
 
     int err = hid_int_ep_read(dev, buff, 64, &rlen);
-    LOG_ERR("MSG (%i): ", rlen);
+    LOG_ERR("RECV/USB (%i): ", rlen);
+    /*
     for(int i = 0; i < rlen; i++) {
         LOG_ERR("%X ", buff[i]);
     }
+    */
     hidergod_parse(buff, rlen);
 }
 

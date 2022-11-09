@@ -150,10 +150,12 @@ static ssize_t write_rx_buff (struct bt_conn *conn, const struct bt_gatt_attr *a
     // Bluetooth does not contain the report ID (0x05), so we need to have it as the first byte for hidergod_parse
     _rxbuff[0] = 0x05;
     memcpy(_rxbuff + 1, buf, len);
-    LOG_ERR("MSG LEN %i\n", len);
+    LOG_ERR("RECV/HOG %i\n", len + 1);
+    /*
     for(int i = 0; i < len + 1; i++) {
         LOG_ERR("%X ", ((uint8_t*)_rxbuff)[i]);
     }
+    */
     hidergod_parse(_rxbuff, len + 1);
     return len;
 }
