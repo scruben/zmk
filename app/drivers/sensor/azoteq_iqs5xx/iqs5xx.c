@@ -187,8 +187,8 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     multiTouchGesture = buffer[1];
 
     // set data to device data portion
-    data->rx = (int16_t)(int8_t)d.i16RelX[1];
-    data->ry = (int16_t)(int8_t)d.i16RelY[1];
+    data->rx = d.i16RelX[1];
+    data->ry = d.i16RelY[1];
     data->ax = d.ui16AbsX[1];
     data->ay = d.ui16AbsY[1];
     if(multiTouchGesture != 0) {

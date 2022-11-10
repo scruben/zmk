@@ -16,6 +16,7 @@
 #include <iqs5xx.h>
 #include <logging/log.h>
 #include <devicetree.h>
+#include <math.h>
 
 LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 
@@ -25,8 +26,8 @@ LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 #define TRACKPAD_RIGHTCLICK_RELEASE_TIME    50
 // Time in ms to release right click after the gesture
 #define TRACKPAD_MIDDLECLICK_RELEASE_TIME    50
-// Scroll speed divider
-#define SCROLL_SPEED_DIVIDER                35
+// Minimum distance to travel until a report is sent
+#define SCROLL_REPORT_DISTANCE              20
 
 // Time in ms when three fingers are considered to be tapped
 #define TRACKPAD_THREE_FINGER_CLICK_TIME    300
@@ -45,6 +46,8 @@ static bool inputEventActive = false;
 static uint8_t lastFingerCount = 0;
 
 static int64_t threeFingerPressTime = 0;
+
+static int16_t lastXScrollReport = 0;
 
 static bool threeFingersPressed = false;
 
@@ -199,7 +202,16 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                     break;                   
                 case GESTURE_SCROLLG:
                     hasGesture = true;
-                    zmk_hid_mouse_scroll_set(-pos_y/SCROLL_SPEED_DIVIDER, pos_x/SCROLL_SPEED_DIVIDER);
+                    lastXScrollReport += pos_x;
+                    // Pan can be always reported
+                    int8_t pan = -pos_y;
+                    // Report scroll only if a certain distance has been travelled
+                    int8_t scroll = 0;
+                    if(abs(lastXScrollReport) - (int16_t)SCROLL_REPORT_DISTANCE > 0) {
+                        scroll = lastXScrollReport >= 0 ? 1 : -1;
+                        lastXScrollReport = 0;
+                    }
+                    zmk_hid_mouse_scroll_set(pan, scroll);
                     zmk_hid_mouse_movement_set(0,0);
                     //k_msleep(10);
                     break;

@@ -132,12 +132,13 @@ static const uint8_t zmk_hid_report_desc[] = {
             HID_REPORT_SIZE(0x10),
             /* REPORT_COUNT (2) */
             HID_REPORT_COUNT(0x02),
-            /* USAGE (X) */ // Vertical scroll
+            /* USAGE (X) */ 
             HID_USAGE(HID_USAGE_GD_X),
             /* USAGE (Y) */
             HID_USAGE(HID_USAGE_GD_Y),
             /* Input (Data,Var,Rel) */
             HID_INPUT(0x06),
+            // Vertical scroll
             /* LOGICAL_MINIMUM (-127) */
             HID_LOGICAL_MIN8(0x81),
             /* LOGICAL_MAXIMUM (127) */
