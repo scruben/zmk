@@ -181,6 +181,11 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
         threeFingersPressed = false;
     }
 
+    if(fingers != 2) {
+        // Reset scroll
+        zmk_hid_mouse_scroll_set(0, 0);
+    }
+
     // Check if any gesture exists
     if(gesture & 0x7F && !hasGesture) {
         // Multi touch gestures
