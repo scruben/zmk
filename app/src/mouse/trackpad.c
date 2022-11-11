@@ -27,7 +27,7 @@ LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 // Time in ms to release right click after the gesture
 #define TRACKPAD_MIDDLECLICK_RELEASE_TIME    50
 // Minimum distance to travel until a report is sent
-#define SCROLL_REPORT_DISTANCE              20
+#define SCROLL_REPORT_DISTANCE              35
 
 // Time in ms when three fingers are considered to be tapped
 #define TRACKPAD_THREE_FINGER_CLICK_TIME    300
