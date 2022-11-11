@@ -308,6 +308,26 @@ rsource "src/mouse/Kconfig"
 #Mouse Options
 endmenu
 
+menu "Configuration"
+
+config ZMK_CONFIG
+	bool "Use configuration in non-volatile memory"
+
+if ZMK_CONFIG
+
+config ZMK_CONFIG_MAX_FIELD_SIZE
+	int "Maximum size of a field in bytes"
+	default 2048
+
+config ZMK_CONFIG_MAX_FIELDS
+	int "Maximum number of fields"
+	default 128
+
+endif
+
+#Configuration
+endmenu
+
 menu "Power Management"
 
 config ZMK_IDLE_TIMEOUT

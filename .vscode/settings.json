@@ -21,7 +21,12 @@
     "battery.h": "c",
     "usb_conn_state_changed.h": "c",
     "hidergod_parser.h": "c",
-    "endpoints.h": "c"
+    "endpoints.h": "c",
+    "config.h": "c",
+    "nvs_flash.h": "c",
+    "flash_map.h": "c",
+    "nvs.h": "c"
   },
-  "python.formatting.provider": "black"
+  "python.formatting.provider": "black",
+  "cmake.sourceDirectory": "${workspaceFolder}/app"
 }

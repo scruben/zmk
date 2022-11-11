@@ -14,6 +14,7 @@
 
 	chosen {
 		zephyr,code-partition = &code_partition;
+		zephyr,storage-partition = &storage_partition;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,console = &cdc_acm_uart0;
