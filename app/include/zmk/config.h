@@ -1,9 +1,9 @@
 /*
-    Manages external configurations, sent via HID USB/BLE and
-    interfaces with NVS
+    Manages device configurations in NVS
 */
 #pragma once
 
+#include <kernel.h>
 #include <stdint.h>
 
 #define ZMK_CONFIG_MAX_FIELD_SIZE       CONFIG_ZMK_CONFIG_MAX_FIELD_SIZE
@@ -16,11 +16,11 @@
  */
 enum zmk_config_key {
     // Invalid key
-    ZMK_CONFIG_KEY_INVALID =            0x0000,
+    ZMK_CONFIG_KEY_INVALID =                0x0000,
 
     // 0x0001 - 0x001F: Misc device config fields
     // Device name for BLE/USB
-    ZMK_CONFIG_KEY_DEVICE_NAME =        0x0001,
+    ZMK_CONFIG_KEY_DEVICE_NAME =            0x0001,
 
 
     // 0x0020 - 0x003F: Keyboard configurations 
@@ -43,7 +43,6 @@ enum zmk_config_key {
 #define ZMK_CONFIG_FIELD_FLAG_WRITTEN     BIT(1)
 
 
-
 /**
  * @brief Configuration field
  * 
@@ -53,10 +52,11 @@ struct zmk_config_field {
     uint16_t key;
     // Bit mask of field flags, see ZMK_CONFIG_FIELD_FLAG_* defs
     uint8_t flags;
+    // Mutex lock, if needed for thread safety
+    struct k_mutex mutex;
     // Allocated size of the field in bytes
     uint16_t size;
     // Local data, should be initialized to NULL
-    // If data is NULL after loading config, a default value should be returned
     void *data;
 };
 
@@ -66,22 +66,37 @@ struct zmk_config_field {
  * 
  * @return int 
  */
-int zmk_config_init ();
+static int zmk_config_init ();
 
 /**
- * @brief Read field from NVS
- * @param key
- * @return Config field or NULL if not found
- */
-struct zmk_config_field *zmk_config_read (enum zmk_config_key key);
-
-/**
- * @brief Writes a config field
+ * @brief Bind a value to config. Automatically reads the value to `data` from NVS when called.
  * 
  * @param key 
- * @param size 
  * @param data 
- * @param write_nvs Commit to writing to NVS also
+ * @param size 
+ * @return struct zmk_config_field* 
+ */
+static struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size);
+
+/**
+ * @brief Get config field NOTE: does not read from NVS! Use zmk_config_read to update the field
+ * 
+ * @param key 
+ * @return struct zmk_config_field* 
+ */
+static struct zmk_config_field *zmk_config_get (enum zmk_config_key key);
+
+/**
+ * @brief Read field from NVS. If the NVS data length doesn't match with local field's size, NVS data will be rewritten from local memory.
+ * @param key
+ * @return 0 on success, <0 on fail
+ */
+static int zmk_config_read (enum zmk_config_key key);
+
+/**
+ * @brief Writes a config field to NVS
+ * 
+ * @param key 
  * @return int 
  */
-int zmk_config_write (enum zmk_config_key key, uint16_t size, void *data, uint8_t write_nvs);
+static int zmk_config_write (enum zmk_config_key key);
