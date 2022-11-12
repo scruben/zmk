@@ -1,11 +1,9 @@
 /*
-    Manages external configurations, sent via HID USB/BLE and
-    interfaces with NVS
+    Manages device configurations in NVS
 */
 #ifdef CONFIG_ZMK_CONFIG
 
 #include <zmk/config.h>
-#include <kernel.h>
 #include <device.h>
 #include <devicetree.h>
 #include <logging/log.h>
@@ -39,10 +37,7 @@ static uint8_t _tmp_buffer[ZMK_CONFIG_MAX_FIELD_SIZE];
 // List of read configs
 static struct zmk_config_field fields[ZMK_CONFIG_MAX_FIELDS];
 
-int _zmk_config_push_local (enum zmk_config_key key, uint16_t size, void *data);
-int _zmk_config_get_local (enum zmk_config_key key);
-
-int zmk_config_init () {
+static int zmk_config_init () {
     // No need to initialize multiple times
     if(_config_initialized)
         return 0;
@@ -78,126 +73,123 @@ int zmk_config_init () {
     return 0;
 }
 
-struct zmk_config_field *zmk_config_read (enum zmk_config_key key) {
+static struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size) {
     if(!_config_initialized)
         return NULL;
 
-    int index = 0, len = 0;
-    // Search from memory before NVS
-    if((index = _zmk_config_get_local(key)) >= 0) {
-        
-        return &fields[index];
+    int err = 0, len = 0;
+    
+    // Check if binding exists, can't bind multiple times
+    if(zmk_config_get(key) != NULL) {
+        LOG_ERR("Can't bind config value twice!");
+        return NULL;
     }
 
+    // Push the field
+    for(int i = 0; i < ZMK_CONFIG_MAX_FIELDS; i++) {
+        if(fields[i].key == ZMK_CONFIG_KEY_INVALID) {
+            fields[i].key = key;
+            fields[i].data = data;
+            fields[i].size = size;
+            fields[i].flags = 0;
+            // Init mutex lock
+            k_mutex_init(&fields[i].mutex);
+
+            err = zmk_config_read(key);
+            if(err < 0) {
+                // Returns error if field does not exist in NVS so this can be ignored for now
+            }
+
+            return &fields[i];
+        }
+    }
+
+    LOG_ERR("Config field array full, increase CONFIG_ZMK_CONFIG_MAX_FIELDS");
+    return NULL;
+}
+
+static struct zmk_config_field *zmk_config_get (enum zmk_config_key key) {
+    if(!_config_initialized)
+        return NULL;
+
+    for(int i = 0; i < ZMK_CONFIG_MAX_FIELDS; i++) {
+        if(fields[i].key == key) {
+            return &fields[i];
+        }
+    }
+    return NULL;
+}
+
+static int zmk_config_read (enum zmk_config_key key) {
+    if(!_config_initialized)
+        return -1;
+
+    int len = 0;
+    struct zmk_config_field *field = zmk_config_get(key);
+
+    // Field not found
+    if(field == NULL)
+        return -1;
+    
+    // Update field from NVS
     len = nvs_read(&fs, (uint16_t)key, _tmp_buffer, ZMK_CONFIG_MAX_FIELD_SIZE);
 
     if(len > 0) {
         // Read OK
-        // Push it to memory
-        index = _zmk_config_push_local(key, len, _tmp_buffer);
-        if(index < 0) {
-            return NULL;
+
+        // Lock
+
+        k_mutex_lock(&field->mutex, K_FOREVER);
+        // Check field size
+        if(field->size == len) {
+            // Field size ok, copy new value
+            memcpy(field->data, _tmp_buffer, len);
+            field->flags |= ZMK_CONFIG_FIELD_FLAG_READ | ZMK_CONFIG_FIELD_FLAG_WRITTEN;
+            k_mutex_unlock(&field->mutex);
         }
-        return &fields[index];
+        else {
+            // Unlock mutex, because write locks it again
+            k_mutex_unlock(&field->mutex);
+            // TODO: replace old value with new one
+            if(zmk_config_write(field->key) < 0) {
+                field->flags = 0;
+                return -1;
+            }
+        }
+        return 0;
     }
     else {
-        return NULL;
+        field->flags &= ~(ZMK_CONFIG_FIELD_FLAG_READ);
+        return -1;
     }
 
 
-    return NULL;
+    return -1;
 }
 
-int zmk_config_write (enum zmk_config_key key, uint16_t size, void *data, uint8_t write_nvs) {
+static int zmk_config_write (enum zmk_config_key key) {
     if(!_config_initialized)    
         return -1;
 
-    int index = 0, len = 0;
+    int len = 0;
     struct zmk_config_field *field = NULL;
+    field = zmk_config_get(key);
 
-    // Search from memory before NVS
-    if((index = _zmk_config_get_local(key)) >= 0) {
-        field = &fields[index];
+    if(field == NULL)
+        return -1;
 
-        // Update field locally
-        field->flags &= ~ZMK_CONFIG_FIELD_FLAG_WRITTEN;
-        if(field->size != size) {
-            // Reallocate
-            k_free(field->data);
-            field->data = k_malloc(size);
-            if(field->data == NULL) {
-                LOG_ERR("Failed to reallocate field");
-                return -1;
-            }
-        }
-        memcpy(field->data, data, size);
+    k_mutex_lock(&field->mutex, K_FOREVER);
+    len = nvs_write(&fs, field->key, field->data, field->size);
+    k_mutex_unlock(&field->mutex);
+    if(len < 0) {
+        LOG_ERR("Config failed to write NVS");
+        // Clear written flag since it's not written
+        field->flags &= ~(ZMK_CONFIG_FIELD_FLAG_WRITTEN);
+        return -1;
     }
-    else {
-        // Push new field
-        index = _zmk_config_push_local(key, size, data);
-        if(index < 0) {
-            LOG_ERR("Failed to push local field");
-            return -1;
-        }
-        field = &fields[index];
-        field->flags = ZMK_CONFIG_FIELD_FLAG_READ;
-    }
-
-    // field should never be NULL here!
-    if(write_nvs) {
-        // Write NVS
-        len = nvs_write(&fs, (uint16_t)key, data, size);
-        if(len < 0) {
-            LOG_ERR("Failed to write NVS");
-            return -1;
-        }
-    }
-    
+    field->flags |= ZMK_CONFIG_FIELD_FLAG_READ | ZMK_CONFIG_FIELD_FLAG_WRITTEN;
 
     return 0;
-}
-
-/**
- * @brief Pushes a field to "fields"
- * @private
- * @param field 
- * @return index of the pushed item, <0 on error
- */
-int _zmk_config_push_local (enum zmk_config_key key, uint16_t size, void *data) {
-
-    for(int i = 0; i < ZMK_CONFIG_MAX_FIELDS; i++) {
-        if(fields[i].key == ZMK_CONFIG_KEY_INVALID) {
-            // Free slot
-            fields[i].key = (uint16_t)key;
-            fields[i].flags = 0;
-            fields[i].size = size;
-            fields[i].data = k_malloc(size);
-            if(fields[i].data == NULL) {
-                // Allocation failed
-                memset(&fields[i], 0, sizeof(struct zmk_config_field));
-                return -1;
-            }
-            memcpy(fields[i].data, data, size);
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-/**
- * @brief Get field index from local array
- * @private
- * @param key 
- * @return int 
- */
-int _zmk_config_get_local (enum zmk_config_key key) {
-    for(int i = 0; i < ZMK_CONFIG_MAX_FIELDS; i++) {
-        if(fields[i].key == key) {
-            return i;
-        }
-    }
-    return -1;
 }
 
 #endif
