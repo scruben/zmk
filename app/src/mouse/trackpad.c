@@ -17,6 +17,7 @@
 #include <logging/log.h>
 #include <devicetree.h>
 #include <math.h>
+#include <zmk/config.h>
 
 LOG_MODULE_DECLARE(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
 
@@ -50,6 +51,8 @@ static int64_t threeFingerPressTime = 0;
 static int16_t lastXScrollReport = 0;
 
 static bool threeFingersPressed = false;
+
+static uint8_t mouseSensitivity = 128;
 
 struct k_timer leftclick_release_timer;
 static void trackpad_leftclick_release () {
@@ -240,7 +243,8 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
     if(!hasGesture) {
         // No gesture, can send mouse delta position
         if(fingers == 1) {
-            zmk_hid_mouse_movement_set(-pos_y, pos_x);
+            float sensMp = (float)mouseSensitivity/128.0F;
+            zmk_hid_mouse_movement_set((int16_t)((float)-pos_y * sensMp), (int16_t)((float)pos_x * sensMp));
             inputMoved = true;
         }
     }
@@ -258,6 +262,9 @@ static int trackpad_init(const struct device *_arg) {
     if (trackpad == NULL) {
         LOG_ERR("Failed to get IQS5XX device");
         return -EINVAL;
+    }
+    if(zmk_config_bind(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY, &mouseSensitivity, sizeof(mouseSensitivity), true, NULL) == NULL) {
+        LOG_ERR("Failed to bind mouse sensitivity");
     }
     int err = 0;
     trig.type = SENSOR_TRIG_DATA_READY;
