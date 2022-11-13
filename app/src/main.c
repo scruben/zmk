@@ -21,10 +21,18 @@ LOG_MODULE_REGISTER(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/mouse.h>
 #endif /* CONFIG_ZMK_MOUSE */
 
+#ifdef CONFIG_ZMK_CONFIG
+#include <zmk/config.h>
+#endif /* CONFIG_ZMK_CONFIG */
+
 #define ZMK_KSCAN_DEV DT_LABEL(ZMK_MATRIX_NODE_ID)
 
 void main(void) {
     LOG_INF("Welcome to ZMK!\n");
+
+#ifdef CONFIG_ZMK_CONFIG
+    zmk_config_init();
+#endif
 
     if (zmk_kscan_init(ZMK_KSCAN_DEV) != 0) {
         return;

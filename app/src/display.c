@@ -9,6 +9,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <zmk/usb.h>
+#include <zmk/config.h>
 
 static const struct device *display;
 
@@ -209,14 +210,14 @@ int battery_sprite = 0;
 // Bluetooth rssi
 int bt_rssi = 0;
 
-int recv_timestamp = 0;
 int timestamp = 0;
 
 char time_dsp[16];
 char date_dsp[16];
 
 int charging = 0;
-
+// Timestamp + timezone
+int32_t recv_timestamp[2] = { 0 };
 
 uint64_t _clock_last_update = 0;
 
@@ -226,13 +227,13 @@ uint64_t _clock_last_update = 0;
 #define SPRITES_BATTERY_COUNT   5
 
 void _update_clock () {
-    if(recv_timestamp == 0) {
+    if(recv_timestamp[0] == 0) {
         strcpy(time_dsp, "--\n--");
         strcpy(date_dsp, "XX.XX");
     }
     else {
         uint64_t nclock = k_uptime_get();
-        timestamp = recv_timestamp + ((nclock - _clock_last_update)/1000);
+        timestamp = (recv_timestamp[0] + recv_timestamp[1]) + ((nclock - _clock_last_update)/1000);
         time_t tmr = timestamp;
 
         struct tm *_tm = localtime(&tmr);
@@ -242,18 +243,17 @@ void _update_clock () {
     }
 }
 
+void datetime_updated (struct zmk_config_field *field) {
+    // Clock updated from zmk_control
+    _clock_last_update = k_uptime_get();
+    _update_clock();
+}
+
 // Set sleep view
 void display_set_sleep () {
     view = VIEW_SLEEP;
     HDL_Update(&interface);
     il0323_hibernate(display);
-}
-
-void display_set_time (int32_t time, int32_t timezone) {
-    recv_timestamp = time + timezone;
-    _clock_last_update = k_uptime_get();
-    _update_clock();
-    //HDL_Update(&interface);
 }
 
 // Updates battery sprite index 
@@ -346,6 +346,10 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
 static int display_init () {
 
     display = DEVICE_DT_GET_ANY(gooddisplay_il0323n);
+
+    if(zmk_config_bind(ZMK_CONFIG_KEY_DATETIME, &recv_timestamp, sizeof(recv_timestamp), false, datetime_updated) == NULL) {
+        LOG_ERR("Failed to bind timestamp");
+    }
 
     if (display == NULL) {
         LOG_ERR("Failed to get il0323n device");

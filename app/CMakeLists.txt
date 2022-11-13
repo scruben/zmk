@@ -81,8 +81,10 @@ if ((NOT CONFIG_ZMK_SPLIT) OR CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
   target_sources(app PRIVATE src/events/layer_state_changed.c)
   target_sources(app PRIVATE src/events/modifiers_state_changed.c)
   target_sources(app PRIVATE src/events/keycode_state_changed.c)
-  # External configurations
+  # Configurations
   target_sources(app PRIVATE src/config.c)
+  # External control via HID
+  target_sources(app PRIVATE src/control.c)
 
   if (CONFIG_ZMK_BLE)
     target_sources(app PRIVATE src/events/ble_active_profile_changed.c)

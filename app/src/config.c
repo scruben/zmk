@@ -1,6 +1,7 @@
 /*
     Manages device configurations in NVS
 */
+#define CONFIG_ZMK_CONFIG
 #ifdef CONFIG_ZMK_CONFIG
 
 #include <zmk/config.h>
@@ -19,14 +20,8 @@ static struct nvs_fs fs;
 // Flash info
 static struct flash_pages_info flash_info;
 
-#define FIXED_PARTITION_DEVICE(label) \
-        DEVICE_DT_GET(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(label)))
-
-#define FIXED_PARTITION_OFFSET(label) DT_REG_ADDR(DT_NODELABEL(label))
-
-#define NVS_PARTITION		    storage_partition
-#define NVS_PARTITION_DEVICE	FIXED_PARTITION_DEVICE(NVS_PARTITION)
-#define NVS_PARTITION_OFFSET	FIXED_PARTITION_OFFSET(NVS_PARTITION)
+#define STORAGE_NODE DT_NODE_BY_FIXED_PARTITION_LABEL(storage)
+#define FLASH_NODE DT_MTD_FROM_FIXED_PARTITION(STORAGE_NODE)
 
 // Config initialized flag
 static uint8_t _config_initialized = 0;
@@ -37,35 +32,39 @@ static uint8_t _tmp_buffer[ZMK_CONFIG_MAX_FIELD_SIZE];
 // List of read configs
 static struct zmk_config_field fields[ZMK_CONFIG_MAX_FIELDS];
 
-static int zmk_config_init () {
+int zmk_config_init () {
     // No need to initialize multiple times
     if(_config_initialized)
         return 0;
+
+    const struct device *flash_dev;
 
     memset(fields, 0, sizeof(struct zmk_config_field) * ZMK_CONFIG_MAX_FIELDS);
 
     int err = 0;
 
-    fs.flash_device = NVS_PARTITION_DEVICE;
+    flash_dev = DEVICE_DT_GET(FLASH_NODE);
 
-    if (!device_is_ready(fs.flash_device)) {
-		LOG_ERR("Flash device %s is not ready\n", fs.flash_device->name);
+    if (!device_is_ready(flash_dev)) {
+		LOG_ERR("Flash device %s is not ready\n", flash_dev->name);
 		return -1;
 	}
 
-    fs.offset = NVS_PARTITION_OFFSET;
-	err = flash_get_page_info_by_offs(fs.flash_device, fs.offset, &flash_info);
+    fs.offset = FLASH_AREA_OFFSET(storage);
+	err = flash_get_page_info_by_offs(flash_dev, fs.offset, &flash_info);
 	if (err) {
 		LOG_ERR("Unable to get page info\n");
-		return - 1;
+		return -1;
 	}
+    
+    // TODO: maybe 8192B sector size and 4 sectors?
 	fs.sector_size = flash_info.size;
-	fs.sector_count = 3U;
+	fs.sector_count = 8U;
 
-    err = nvs_init(&fs, fs.flash_device->name);
+    err = nvs_init(&fs, flash_dev->name);
 	if (err) {
-		LOG_ERR("Flash Init failed\n");
-		return - 1;
+		LOG_ERR("Flash Init failed dev:%s err:%i offset:%i sector:%i sectors:%i", flash_dev->name, err, fs.offset, fs.sector_size, fs.sector_count);
+		return -1;
 	}
     // Set initialized flag
     _config_initialized = 1;
@@ -73,9 +72,12 @@ static int zmk_config_init () {
     return 0;
 }
 
-static struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size) {
-    if(!_config_initialized)
-        return NULL;
+struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size, uint8_t saveable, void (*update_callback)(struct zmk_config_field)) {
+    if(!_config_initialized) {
+        if(zmk_config_init() < 0) {
+            return NULL;
+        }
+    }
 
     int err = 0, len = 0;
     
@@ -91,7 +93,8 @@ static struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *
             fields[i].key = key;
             fields[i].data = data;
             fields[i].size = size;
-            fields[i].flags = 0;
+            fields[i].flags = (saveable ? ZMK_CONFIG_FIELD_FLAG_SAVEABLE : 0);
+            fields[i].on_update = update_callback;
             // Init mutex lock
             k_mutex_init(&fields[i].mutex);
 
@@ -108,7 +111,7 @@ static struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *
     return NULL;
 }
 
-static struct zmk_config_field *zmk_config_get (enum zmk_config_key key) {
+struct zmk_config_field *zmk_config_get (enum zmk_config_key key) {
     if(!_config_initialized)
         return NULL;
 
@@ -120,7 +123,7 @@ static struct zmk_config_field *zmk_config_get (enum zmk_config_key key) {
     return NULL;
 }
 
-static int zmk_config_read (enum zmk_config_key key) {
+int zmk_config_read (enum zmk_config_key key) {
     if(!_config_initialized)
         return -1;
 
@@ -130,6 +133,10 @@ static int zmk_config_read (enum zmk_config_key key) {
     // Field not found
     if(field == NULL)
         return -1;
+
+    // Only allow saveable fields to be read
+    if(field->flags & ZMK_CONFIG_FIELD_FLAG_SAVEABLE == 0)
+        return -1;
     
     // Update field from NVS
     len = nvs_read(&fs, (uint16_t)key, _tmp_buffer, ZMK_CONFIG_MAX_FIELD_SIZE);
@@ -138,7 +145,6 @@ static int zmk_config_read (enum zmk_config_key key) {
         // Read OK
 
         // Lock
-
         k_mutex_lock(&field->mutex, K_FOREVER);
         // Check field size
         if(field->size == len) {
@@ -167,7 +173,7 @@ static int zmk_config_read (enum zmk_config_key key) {
     return -1;
 }
 
-static int zmk_config_write (enum zmk_config_key key) {
+int zmk_config_write (enum zmk_config_key key) {
     if(!_config_initialized)    
         return -1;
 
@@ -176,6 +182,10 @@ static int zmk_config_write (enum zmk_config_key key) {
     field = zmk_config_get(key);
 
     if(field == NULL)
+        return -1;
+
+    // Only allow saveable fields to be written
+    if(field->flags & ZMK_CONFIG_FIELD_FLAG_SAVEABLE == 0)
         return -1;
 
     k_mutex_lock(&field->mutex, K_FOREVER);
