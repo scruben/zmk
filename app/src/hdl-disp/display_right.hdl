@@ -7,8 +7,8 @@
 #const B_DATE   8
 #const B_CHRG   9
 
-#img KB_ICONS (0, 0, 24, 24) "kb-icons.bmp"
-#img SLEEP_ICON "sleep-icon-big.bmp"
+#img KB_ICONS (0, 0, 24, 24) "assets/kb-icons.bmp"
+#img SLEEP_ICON "assets/sleep-icon-big.bmp"
 
 <switch value=$B_VIEW>
     <box id="VIEW_MAIN" flexdir="row">
