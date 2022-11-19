@@ -1,0 +1,213 @@
+#include "../hdl/hdl.h"
+#include "compiled/hdl-compiled.h"
+#include "../drivers/epd/il0323n.h"
+#include <zmk/config.h>
+#include <zmk/battery.h>
+#include <zmk/usb.h>
+#include <kernel.h>
+#include <device.h>
+#include <logging/log.h>
+#include <string.h>
+#include <time.h>
+
+LOG_MODULE_REGISTER(hdldisp, CONFIG_DISPLAY_LOG_LEVEL);
+
+// Display device
+static const struct device *display;
+// Interface object
+struct HDL_Interface interface;
+// Default font
+extern const char HDL_FONT[2048];
+
+enum dsp_view {
+    VIEW_MAIN,
+    VIEW_SLEEP
+};
+
+// *******************************
+// ZMK_CONFIG_KEY_DATETIME field
+// *******************************
+// Received timestamp field
+struct __attribute__((packed)) {
+    int32_t timestamp;
+    int32_t offset;
+} conf_time;
+// Actual updated timestamp
+int conf_time_timestamp = 0;
+uint64_t _conf_time_last_update = 0;
+
+// Bound values
+struct {
+
+    // View
+    enum dsp_view view;
+    // Battery percentage
+    uint8_t batt_percent;
+    // Battery sprite
+    uint8_t batt_sprite;
+    // Charging
+    uint8_t charge;
+
+    // Displayed time and date strings
+    char conf_time_dsp[16];
+    char conf_date_dsp[16];
+
+} dsp_binds;
+
+// Refresh clock texts
+void conf_time_refresh () {
+    if(conf_time.timestamp == 0) {
+        strcpy(dsp_binds.conf_time_dsp, "--\n--");
+        strcpy(dsp_binds.conf_date_dsp, "XX.XX");
+    }
+    else {
+        uint64_t nclock = k_uptime_get();
+        conf_time_timestamp = (conf_time.timestamp + conf_time.offset) + ((nclock - _conf_time_last_update)/1000);
+        time_t tmr = conf_time_timestamp;
+
+        struct tm *_tm = localtime(&tmr);
+
+        sprintf(dsp_binds.conf_time_dsp, "%02i\n%02i", _tm->tm_hour, _tm->tm_min);
+        sprintf(dsp_binds.conf_date_dsp, "%02i.%02i", _tm->tm_mday, _tm->tm_mon + 1);
+    }
+}
+
+// Time received via zmk_control callback
+void conf_time_updated () {
+    _conf_time_last_update = k_uptime_get();
+    conf_time_refresh();
+}
+
+// Set sleep view
+void display_set_sleep () {
+    dsp_binds.view = VIEW_SLEEP;
+    HDL_Update(&interface);
+    il0323_hibernate(display);
+}
+
+// Sprite offset for battery icons
+#define SPRITES_OFFSET_BATTERY  9
+#define SPRITES_BATTERY_CHARGE  SPRITES_OFFSET_BATTERY + 5
+#define SPRITES_BATTERY_EMPTY   SPRITES_OFFSET_BATTERY + 4
+#define SPRITES_BATTERY_1_4     SPRITES_OFFSET_BATTERY + 3
+#define SPRITES_BATTERY_2_4     SPRITES_OFFSET_BATTERY + 2
+#define SPRITES_BATTERY_3_4     SPRITES_OFFSET_BATTERY + 1
+#define SPRITES_BATTERY_FULL    SPRITES_OFFSET_BATTERY + 0
+
+
+// Battery sprite count
+#define SPRITES_BATTERY_COUNT   5
+
+// Updates battery sprite index 
+void update_battery_sprite () {
+    if(zmk_usb_is_powered()) {
+        // Set charge / sprite
+        dsp_binds.charge = 1;
+        dsp_binds.batt_sprite = SPRITES_BATTERY_CHARGE;
+    }
+    else {
+        // Set correct battery percentage
+        uint8_t b = dsp_binds.batt_percent;
+        dsp_binds.charge = 0;
+        if(b <= 10) {
+            dsp_binds.batt_sprite = SPRITES_BATTERY_EMPTY;
+        }
+        else if(b > 10 && b <= 30) {
+            dsp_binds.batt_sprite = SPRITES_BATTERY_1_4;
+        }
+        else if(b > 30 && b <= 60) {
+            dsp_binds.batt_sprite = SPRITES_BATTERY_2_4;
+        }
+        else if(b > 60 && b <= 85) {
+            dsp_binds.batt_sprite = SPRITES_BATTERY_3_4;
+        }
+        else if(b > 85) {
+            dsp_binds.batt_sprite = SPRITES_BATTERY_FULL;
+        }
+    }
+}
+
+
+
+
+static void display_thread(void *arg, void *unused2, void *unused3) {
+    k_msleep(100);
+    while(display == NULL) {
+        k_msleep(10000);
+        display = DEVICE_DT_GET_ANY(gooddisplay_il0323n);
+    }
+
+    int err = 0;
+
+    // Init interface
+    interface = HDL_CreateInterface(80, 128, HDL_COLORS_MONO, HDL_FEAT_TEXT | HDL_FEAT_LINE_HV | HDL_FEAT_BITMAP);
+    // Create bindings
+    HDL_SetBinding(&interface, "VIEW",          1, &dsp_binds.view);
+    HDL_SetBinding(&interface, "BATT_PERCENT",  2, &dsp_binds.batt_percent);
+    HDL_SetBinding(&interface, "BATT_SPRITE",   3, &dsp_binds.batt_sprite);
+    HDL_SetBinding(&interface, "CHRG",          4, &dsp_binds.charge);
+    HDL_SetBinding(&interface, "TIME",          5, &dsp_binds.conf_time_dsp);
+    HDL_SetBinding(&interface, "DATE",          6, &dsp_binds.conf_date_dsp);
+
+
+    // Build page
+    err = HDL_Build(&interface, HDL_PAGE_display_right_hdl, HDL_PAGE_SIZE_display_right_hdl);
+    if(err) {
+        // Error TODO:
+        return;
+    }
+
+    // Add preloaded images
+    // Preloaded images' id's must have the MSb as 1 (>0x8000)
+    // Normal icons
+    err = HDL_PreloadBitmap(&interface, 0x8001, HDL_IMG_kb_icons_bmp_c, HDL_IMG_SIZE_kb_icons_bmp_c);
+    // Big icons
+    err = HDL_PreloadBitmap(&interface, 0x8002, HDL_IMG_kb_icons_big_bmp_c, HDL_IMG_SIZE_kb_icons_big_bmp_c);
+
+    interface.textHeight = 6;
+    interface.textWidth = 4;
+
+    while(1) {
+
+        // Update battery
+        dsp_binds.batt_percent = zmk_battery_state_of_charge();
+        update_battery_sprite();
+        // Update time
+        conf_time_refresh();
+
+        HDL_Update(&interface);
+
+        k_msleep(30000);
+
+    }
+}
+
+static int display_init () {
+
+    display = DEVICE_DT_GET_ANY(gooddisplay_il0323n);
+
+    // Bind timestamp
+    if(zmk_config_bind(ZMK_CONFIG_KEY_DATETIME, &conf_time, sizeof(conf_time), false, conf_time_updated) == NULL) {
+        LOG_ERR("Failed to bind timestamp");
+    }
+
+    if (display == NULL) {
+        LOG_ERR("Failed to get il0323n device");
+        return -EINVAL;
+    }
+
+    conf_time.offset = 0;
+    conf_time.timestamp = 0;
+    // Initialize config/time strings
+    conf_time_refresh();
+
+    dsp_binds.view = VIEW_MAIN;
+    dsp_binds.charge = 0;
+    dsp_binds.batt_percent = 0;
+    dsp_binds.batt_sprite = 0;
+
+    return 0;
+}
+
+SYS_INIT(display_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+K_THREAD_DEFINE(display_thr, 4096, display_thread, NULL, NULL, NULL, K_PRIO_PREEMPT(10), 0, 0);

@@ -112,8 +112,14 @@ target_sources(app PRIVATE src/main.c)
 add_subdirectory(src/display/)
 # HDL
 add_subdirectory(src/hdl/)
-target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/display.c)
-target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/font.c)
+
+# Add compiled images and pages
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/hdl-disp/compiled/display_right.c)
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/hdl-disp/compiled/kb-icons.bmp.c)
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/hdl-disp/compiled/kb-icons-big.bmp.c)
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/hdl-disp/font.c)
+
+target_sources_ifdef(CONFIG_ZEPHYR_HDL app PRIVATE src/hdl-disp/display.c)
 
 
 zephyr_cc_option(-Wfatal-errors)
