@@ -72,7 +72,7 @@ int zmk_config_init () {
     return 0;
 }
 
-struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size, uint8_t saveable, void (*update_callback)(struct zmk_config_field)) {
+struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size, uint8_t saveable, void (*update_callback)(struct zmk_config_field*)) {
     if(!_config_initialized) {
         if(zmk_config_init() < 0) {
             return NULL;

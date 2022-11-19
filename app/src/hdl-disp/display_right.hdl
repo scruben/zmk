@@ -1,14 +1,12 @@
-#const B_ROLE   1
-#const B_VIEW   2
-#const B_BATT   3
-#const B_RFSH   4
-#const B_BATT_SPRITE   5
-#const B_TIME   7
-#const B_DATE   8
-#const B_CHRG   9
+#const B_VIEW           1
+#const B_BATT_PERCENT   2
+#const B_BATT_SPRITE    3
+#const B_CHRG           4
+#const B_TIME           5
+#const B_DATE           6
 
-#img KB_ICONS (0, 0, 24, 24) "assets/kb-icons.bmp"
-#img SLEEP_ICON "assets/sleep-icon-big.bmp"
+#const KB_ICONS         0x8001
+#const KB_ICONS_BIG     0x8002
 
 <switch value=$B_VIEW>
     <box id="VIEW_MAIN" flexdir="row">
@@ -17,8 +15,8 @@
                 <box size=1 img=KB_ICONS sprite=3 flex=5>
                 
                 </box>
-                <box bind=[B_RFSH] size=1 flex=1>
-                    RFSH\n%i
+                <box size=1 flex=1>
+                    
                 </box>
             </box>
             <box flexdir="row">
@@ -27,7 +25,7 @@
                 </box>
                 <box flex=1>
                     <switch value=$B_CHRG>
-                        <box size=2 bind=[B_BATT]>
+                        <box size=2 bind=[B_BATT_PERCENT]>
                             %i
                         </box>
                         <box size=1>
@@ -48,8 +46,9 @@
         
     </box>
     <box id="VIEW_SLEEP" flexdir="row">
-        <box img=SLEEP_ICON>
+        <box img=KB_ICONS_BIG sprite=0>
 
         </box>
     </box>
 </switch>
+

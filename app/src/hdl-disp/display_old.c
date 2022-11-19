@@ -305,7 +305,6 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     HDL_SetBinding(&interface, "date_dsp", 8, &date_dsp);
     HDL_SetBinding(&interface, "chrg", 9, &charging);
 
-
     err |= HDL_Build(&interface, HDL_PAGE_OUTPUT, sizeof(HDL_PAGE_OUTPUT));
 
     battery_percent = zmk_battery_state_of_charge();
