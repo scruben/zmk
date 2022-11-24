@@ -264,7 +264,7 @@ static int display_init () {
     display = DEVICE_DT_GET_ANY(gooddisplay_il0323n);
 
     // Bind timestamp
-    if(zmk_config_bind(ZMK_CONFIG_KEY_DATETIME, &conf_time, sizeof(conf_time), false, conf_time_updated) == NULL) {
+    if(zmk_config_bind(ZMK_CONFIG_KEY_DATETIME, &conf_time, sizeof(conf_time), false, conf_time_updated, display) == NULL) {
         LOG_ERR("Failed to bind timestamp");
     }
 

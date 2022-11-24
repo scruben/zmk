@@ -4,6 +4,7 @@
 #pragma once
 
 #include <kernel.h>
+#include <device.h>
 #include <stdint.h>
 
 #define ZMK_CONFIG_MAX_FIELD_SIZE       CONFIG_ZMK_CONFIG_MAX_FIELD_SIZE
@@ -45,13 +46,17 @@ enum zmk_config_key {
     // --------------------------------------------------------------
 
     // (int32_t[2]) [0] Unix timestamp of time, [1] timezone in seconds
-    ZMK_CONFIG_KEY_DATETIME =               0x4000
+    ZMK_CONFIG_KEY_DATETIME =               0x4000,
 
 
     // --------------------------------------------------------------
     // 0x8000 - 0xFFFF: Custom fields
     // Fields that should be used if custom fields are needed
     // --------------------------------------------------------------
+    
+    // hid:ergo device specific fields
+    // IQS5XX register configuration
+    ZMK_CONFIG_CUSTOM_IQS5XX_REGS =         0x8001,
 
 };
 
@@ -74,6 +79,8 @@ struct zmk_config_field {
     uint8_t flags;
     // Mutex lock, if needed for thread safety
     struct k_mutex mutex;
+    // Device handle
+    struct device *device;
     // Callback to be triggered when data is updated via zmk_control
     void (*on_update)(struct zmk_config_field *field);
     // Allocated size of the field in bytes
@@ -97,9 +104,11 @@ int zmk_config_init ();
  * @param data 
  * @param size 
  * @param saveable
+ * @param update_callback
+ * @param device
  * @return struct zmk_config_field* 
  */
-struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size, uint8_t saveable, void (*update_callback)(struct zmk_config_field*));
+struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size, uint8_t saveable, void (*update_callback)(struct zmk_config_field*), struct device *device);
 
 /**
  * @brief Get config field NOTE: does not read from NVS! Use zmk_config_read to update the field

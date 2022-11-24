@@ -54,6 +54,21 @@ static bool threeFingersPressed = false;
 
 static uint8_t mouseSensitivity = 128;
 
+struct iqs5xx_reg_config trackpad_registers;
+
+/**
+ * @brief Called when `trackpad_registers` is updated via zmk_control/zmk_config
+ * 
+ * @param field 
+ */
+void trackpad_config_on_update (struct zmk_config_field *field) {
+    // Send new register values to the device
+    int err = iqs5xx_registers_init(field->device, &trackpad_registers);
+    if(err) {
+        LOG_ERR("Failed to refresh IQS5xx registers!\r\n");
+    }
+}
+
 struct k_timer leftclick_release_timer;
 static void trackpad_leftclick_release () {
     zmk_hid_mouse_button_release(0);
@@ -263,9 +278,15 @@ static int trackpad_init(const struct device *_arg) {
         LOG_ERR("Failed to get IQS5XX device");
         return -EINVAL;
     }
-    if(zmk_config_bind(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY, &mouseSensitivity, sizeof(mouseSensitivity), true, NULL) == NULL) {
+    // Bind mouse sensitivity
+    if(zmk_config_bind(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY, &mouseSensitivity, sizeof(mouseSensitivity), true, NULL, trackpad) == NULL) {
         LOG_ERR("Failed to bind mouse sensitivity");
     }
+    // Bind config - mark saveable
+    if(zmk_config_bind(ZMK_CONFIG_CUSTOM_IQS5XX_REGS, &trackpad_registers, sizeof(struct iqs5xx_reg_config), true, trackpad_config_on_update, trackpad) == NULL) {
+        LOG_ERR("Failed to bind trackpad config");
+    }
+
     int err = 0;
     trig.type = SENSOR_TRIG_DATA_READY;
 	trig.chan = SENSOR_CHAN_ALL;

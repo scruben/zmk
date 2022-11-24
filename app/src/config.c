@@ -72,7 +72,7 @@ int zmk_config_init () {
     return 0;
 }
 
-struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size, uint8_t saveable, void (*update_callback)(struct zmk_config_field*)) {
+struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, uint16_t size, uint8_t saveable, void (*update_callback)(struct zmk_config_field*), struct device *device) {
     if(!_config_initialized) {
         if(zmk_config_init() < 0) {
             return NULL;
@@ -95,6 +95,7 @@ struct zmk_config_field *zmk_config_bind (enum zmk_config_key key, void *data, u
             fields[i].size = size;
             fields[i].flags = (saveable ? ZMK_CONFIG_FIELD_FLAG_SAVEABLE : 0);
             fields[i].on_update = update_callback;
+            fields[i].device = device;
             // Init mutex lock
             k_mutex_init(&fields[i].mutex);
 
