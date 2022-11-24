@@ -204,31 +204,23 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     return 0;
 }
 
-int callbackCnt = 0;
-
-int callbackErr = 0;
-
-static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config);
-
 static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
     const struct device *dev = arg;
 	ARG_UNUSED(unused2);
 	ARG_UNUSED(unused3);
     struct iqs5xx_data *data = dev->data;
     struct iqs5xx_config *conf = dev->config;
-
-    // Initialize device registers
-    struct iqs5xx_reg_config regconf = iqs5xx_reg_config_default();
-
     int err = 0;
 
-    err = iqs5xx_registers_init(dev, &regconf);
+    // Initialize device registers - may be overwritten later in trackpad.c
+    struct iqs5xx_reg_config iqs5xx_registers = iqs5xx_reg_config_default();
+
+    err = iqs5xx_registers_init(dev, &iqs5xx_registers);
     if(err) {
         LOG_ERR("Failed to initialize IQS5xx registers!\r\n");
     }
 
     int nstate = 0;
-    uint32_t lastSample = k_uptime_get_32();
     while (1) {
         // Sleep for maximum possible time to maximize processor time for other tasks
         #ifdef CONFIG_IQS5XX_POLL
@@ -289,7 +281,7 @@ static void iqs5xx_callback(const struct device *dev, struct gpio_callback *cb, 
  * @param dev 
  * @return >0 if error
  */
-static int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config) {
+int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config) {
     // TODO: Retry if error on write
 
     struct iqs5xx_config *conf = dev->config;
@@ -375,10 +367,8 @@ static int iqs5xx_init(const struct device *dev) {
     // Add callback
 	err = gpio_add_callback(config->dr_port, &data->dr_cb);
 
-    callbackErr |= err;
     // Configure data ready interrupt
     err = gpio_pin_interrupt_configure(config->dr_port, config->dr_pin, GPIO_INT_EDGE_TO_ACTIVE);
-    callbackErr |= err;
     #endif
 
     return 0;

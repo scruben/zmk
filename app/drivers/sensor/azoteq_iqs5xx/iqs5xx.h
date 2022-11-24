@@ -54,7 +54,7 @@ __subsystem struct iqs5xx_sensor_driver_api {
 
 
 // Register configuration structure
-struct iqs5xx_reg_config {
+struct __attribute__((packed)) iqs5xx_reg_config {
     // Refresh rate when the device is active (ms interval)
     uint16_t    activeRefreshRate;
     // Refresh rate when the device is idling (ms interval)
@@ -85,6 +85,15 @@ struct iqs5xx_reg_config {
 
 // Returns the default register configuration
 struct iqs5xx_reg_config iqs5xx_reg_config_default ();
+
+/**
+ * @brief Initializes registers
+ * 
+ * @param dev 
+ * @param config 
+ * @return int 
+ */
+int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config);
 
 // Byte swap macros
 #define SWPEND16(n) ((n >> 8) | (n << 8))
