@@ -87,7 +87,7 @@ void display_set_sleep () {
 
 // Sprite offset for battery icons
 #define SPRITES_OFFSET_BATTERY  9
-#define SPRITES_BATTERY_CHARGE  SPRITES_OFFSET_BATTERY + 5
+#define SPRITES_BATTERY_CHARGE  SPRITES_OFFSET_BATTERY + 6
 #define SPRITES_BATTERY_EMPTY   SPRITES_OFFSET_BATTERY + 4
 #define SPRITES_BATTERY_1_4     SPRITES_OFFSET_BATTERY + 3
 #define SPRITES_BATTERY_2_4     SPRITES_OFFSET_BATTERY + 2
@@ -127,8 +127,71 @@ void update_battery_sprite () {
     }
 }
 
+// Interface for clearing an area on the display
+void dsp_clear (int16_t x, int16_t y, uint16_t w, uint16_t h) {
+    il0323_clear_area(display, x, y, w, h);
+}
 
+// Interface for triggering render on the display
+void dsp_render (int16_t x, int16_t y, uint16_t w, uint16_t h) {
+    il0323_refresh(display, x, y, w, h);
+}
 
+// Interface for drawing single pixel on the display
+void dsp_pixel (int16_t x, int16_t y) {
+    il0323_set_pixel(display, x, y);
+}
+
+// Interface for drawing horizontal line on the display
+void dsp_hline (int16_t x, int16_t y, int16_t len) {
+    il0323_h_line(display, x, y, len);
+}
+
+// Interface for drawing vertical line on the display
+void dsp_vline (int16_t x, int16_t y, int16_t len) {
+    il0323_v_line(display, x, y, len);
+}
+
+// Font
+extern const char HDL_FONT[2048];
+
+// Interface for drawing text on the display
+void dsp_text (int16_t x, int16_t y, const char *text, uint8_t fontSize) {
+
+    int len = strlen(text);
+    int line = 0;
+    int acol = 0;
+
+    for (int g = 0; g < len; g++) {
+		// Starting character in single quotes
+
+        if (text[g] == '\n') {
+			line++;
+			acol = 0;
+			continue;
+		}
+		else if (text[g] == ' ') {
+			acol++;
+		}
+		
+		for (int py = 0; py < 8; py++) {
+			for (int px = 0; px < 5; px++) {
+				if ((HDL_FONT[text[g] * 8 + py] >> (7 - px)) & 1) {
+                    int rx = x + (px + acol * 5) * fontSize;
+                    int ry = y + (py + line * 6) * fontSize;
+
+                    for(int sy = 0; sy < fontSize; sy++) {
+                        for(int sx = 0; sx < fontSize; sx++) {
+                            dsp_pixel(rx + sx, ry + sy);
+                        }
+                    }
+				}
+			}
+		}
+		acol++;
+
+    }
+}
 
 static void display_thread(void *arg, void *unused2, void *unused3) {
     k_msleep(100);
@@ -136,11 +199,22 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
         k_msleep(10000);
         display = DEVICE_DT_GET_ANY(gooddisplay_il0323n);
     }
+    // Initialize display registers
+    il0323_init_regs(display);
 
     int err = 0;
 
     // Init interface
     interface = HDL_CreateInterface(80, 128, HDL_COLORS_MONO, HDL_FEAT_TEXT | HDL_FEAT_LINE_HV | HDL_FEAT_BITMAP);
+
+    // Set interface functions
+    interface.f_clear = dsp_clear;
+    interface.f_renderPart = dsp_render;
+    interface.f_pixel = dsp_pixel;
+    interface.f_hline = dsp_hline;
+    interface.f_vline = dsp_vline;
+    interface.f_text = dsp_text;
+
     // Create bindings
     HDL_SetBinding(&interface, "VIEW",          1, &dsp_binds.view);
     HDL_SetBinding(&interface, "BATT_PERCENT",  2, &dsp_binds.batt_percent);
@@ -164,6 +238,7 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     // Big icons
     err = HDL_PreloadBitmap(&interface, 0x8002, HDL_IMG_kb_icons_big_bmp_c, HDL_IMG_SIZE_kb_icons_big_bmp_c);
 
+    // Set text width and height, used to center text
     interface.textHeight = 6;
     interface.textWidth = 4;
 
@@ -175,10 +250,12 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
         // Update time
         conf_time_refresh();
 
+        // Update display TODO: Event based!
         HDL_Update(&interface);
+        il0323_hibernate(display);
 
+        // Sleep for 30s
         k_msleep(30000);
-
     }
 }
 
@@ -200,7 +277,7 @@ static int display_init () {
     conf_time.timestamp = 0;
     // Initialize config/time strings
     conf_time_refresh();
-
+    // Init binds
     dsp_binds.view = VIEW_MAIN;
     dsp_binds.charge = 0;
     dsp_binds.batt_percent = 0;
