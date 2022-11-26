@@ -2,6 +2,9 @@
 #include <zmk/config.h>
 #include <logging/log.h>
 #include <string.h>
+#include <zmk/endpoints.h>
+#include <zmk/usb_hid.h>
+#include <zmk/hog.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -44,6 +47,92 @@ int zmk_control_set_config (uint8_t *buffer, uint16_t len) {
     if(field->on_update != NULL) {
         // On update callback
         field->on_update(field);
+    }
+
+    return 0;
+}
+
+uint8_t *_zmk_control_input_buffer = NULL;
+int _zmk_control_input_buffer_size = 0;
+
+/**
+ * @brief Get configuration values
+ * 
+ * @return int 
+ */
+int zmk_control_get_config (uint8_t *buffer, uint16_t len) {
+
+    struct zmk_control_msg_get_config *request = buffer;
+
+    struct zmk_config_field *field = zmk_config_get(request->key);
+    if(field == NULL) {
+        // Field not found
+        LOG_ERR("[Control] Field 0x%04X not found!", request->key);
+        return -1;
+    }
+    // Maximum size is defined in request
+    if(field->size > request->size) {
+        // Invalid size
+        LOG_ERR("[Control] Field 0x%04X size not correct! (%i received < %i defined)", request->key, request->size, field->size);
+        return -1;
+    }
+
+    // Free input buffer
+    if(_zmk_control_input_buffer != NULL) {
+        k_free(_zmk_control_input_buffer);
+        _zmk_control_input_buffer = NULL;
+        _zmk_control_input_buffer_size = 0;
+    }
+    // Allocate input buffer
+    _zmk_control_input_buffer_size = sizeof(struct zmk_control_msg_header) + (sizeof(struct zmk_control_msg_get_config) - 1) + field->size;
+    _zmk_control_input_buffer = k_malloc(_zmk_control_input_buffer_size);
+
+    if(_zmk_control_input_buffer == NULL) {
+        LOG_ERR("[Control] ERROR: Out of memory!");
+        _zmk_control_input_buffer_size = 0;
+        return -1;
+    }
+
+    struct zmk_control_msg_header *hdr = (struct zmk_control_msg_header *)_zmk_control_input_buffer;
+    hdr->report_id = 0x05;
+    hdr->cmd = ZMK_CONTROL_CMD_GET_CONFIG;
+    hdr->crc = 0;
+    hdr->chunk_offset = 0;
+    hdr->chunk_size = (sizeof(struct zmk_control_msg_get_config) - 1) + field->size;
+    hdr->size = hdr->chunk_size;
+    
+    struct zmk_control_msg_get_config *resp = _zmk_control_input_buffer + sizeof(struct zmk_control_msg_header);
+    resp->key = request->key;
+    resp->size = request->size;
+    memcpy(&resp->data, field->data, field->size);
+    
+    switch (zmk_endpoints_selected()) {
+#if IS_ENABLED(CONFIG_ZMK_USB)
+        case ZMK_ENDPOINT_USB: {
+            int err = zmk_usb_hid_send_report((uint8_t *)_zmk_control_input_buffer, _zmk_control_input_buffer_size);
+            if (err) {
+                LOG_ERR("FAILED TO SEND OVER USB: %d", err);
+            }
+            break;
+        }
+#endif /* IS_ENABLED(CONFIG_ZMK_USB) */
+
+#if IS_ENABLED(CONFIG_ZMK_BLE)
+        case ZMK_ENDPOINT_BLE: {
+            return 0;
+            /*
+            int err = zmk_hog_send_keyboard_report(&keyboard_report->body);
+            if (err) {
+                LOG_ERR("FAILED TO SEND OVER HOG: %d", err);
+            }
+            break;
+            */
+        }
+#endif /* IS_ENABLED(CONFIG_ZMK_BLE) */
+
+        default:
+            LOG_ERR("Unsupported endpoint %d", zmk_endpoints_selected());
+            return -ENOTSUP;
     }
 
     return 0;
@@ -111,8 +200,15 @@ int zmk_control_parse (uint8_t *buffer, size_t len) {
 
         // Message ready
         switch((enum zmk_control_cmd_t)data_header.cmd) {
+            case ZMK_CONTROL_CMD_CONNECT:
+
+                break;
             case ZMK_CONTROL_CMD_SET_CONFIG:
                 err = zmk_control_set_config(data_buffer, data_header.size);
+                break;
+            case ZMK_CONTROL_CMD_GET_CONFIG:
+                LOG_ERR("ZMK_CONTROL_GET_CONFIG");
+                err = zmk_control_get_config(data_buffer, data_header.size);
                 break;
             case ZMK_CONTROL_CMD_INVALID:
             default:

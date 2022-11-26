@@ -9,6 +9,10 @@
 // Maximum report size including 1 byte of report ID
 #define ZMK_CONTROL_REPORT_SIZE     0x20
 
+// Dynamically allocated output buffer
+extern uint8_t *_zmk_control_input_buffer;
+extern int _zmk_control_input_buffer_size;
+
 // Commands
 enum zmk_control_cmd_t {
     // Invalid/reserved command

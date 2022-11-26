@@ -156,19 +156,23 @@ static ssize_t write_rx_buff (struct bt_conn *conn, const struct bt_gatt_attr *a
 
 static ssize_t read_rx_buff(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                                             void *buf, uint16_t len, uint16_t offset) {
-
-    LOG_ERR("MSG LEN %i\n", len);
-    for(int i = 0; i < len + 1; i++) {
-        LOG_ERR("%X ", ((uint8_t*)buf)[i]);
-    }
-    _rxbuff[0] = 0x05;
-    _rxbuff[1] = 0xDE;
-    _rxbuff[2] = 0xAD;
-    _rxbuff[3] = 0xBE;
-    _rxbuff[4] = 0xEF;
     
-    return bt_gatt_attr_read(conn, attr, buf, len, offset, _rxbuff,
-                             19);
+    if(_zmk_control_input_buffer == NULL) {
+        uint8_t buff[ZMK_CONTROL_REPORT_SIZE];
+        memset(buff, 0, sizeof(buff));
+        buff[0] = 0x05;
+        return bt_gatt_attr_read(conn, attr, buf, len, offset, _zmk_control_input_buffer, ZMK_CONTROL_REPORT_SIZE);
+    }
+    ssize_t l = bt_gatt_attr_read(conn, attr, buf, len, offset, _zmk_control_input_buffer, ZMK_CONTROL_REPORT_SIZE);
+
+    if(offset + l >= _zmk_control_input_buffer_size) {
+        // Message completely read
+        k_free(_zmk_control_input_buffer);
+        _zmk_control_input_buffer = NULL;
+        _zmk_control_input_buffer_size = 0;
+    }
+
+    return l;
 }
 
 /* HID Service Declaration */
@@ -198,18 +202,17 @@ BT_GATT_SERVICE_DEFINE(
     BT_GATT_DESCRIPTOR(BT_UUID_HIDS_REPORT_REF, BT_GATT_PERM_READ_ENCRYPT, read_hids_report_ref,
                        NULL, &mouse_input),
     
-    BT_GATT_CHARACTERISTIC(BT_UUID_HIDS_REPORT, BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE | BT_GATT_CHRC_WRITE_WITHOUT_RESP,
+    BT_GATT_CHARACTERISTIC(BT_UUID_HIDS_REPORT, BT_GATT_CHRC_WRITE | BT_GATT_CHRC_WRITE_WITHOUT_RESP,
                            BT_GATT_PERM_WRITE_ENCRYPT, NULL, write_rx_buff, _rxbuff),
     BT_GATT_CCC(input_ccc_changed, BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT),
     BT_GATT_DESCRIPTOR(BT_UUID_HIDS_REPORT_REF, BT_GATT_PERM_READ_ENCRYPT, read_hids_report_ref,
                        NULL, &data_output),
-    /*
+    
     BT_GATT_CHARACTERISTIC(BT_UUID_HIDS_REPORT, BT_GATT_CHRC_READ,
-                           BT_GATT_PERM_READ_ENCRYPT, read_rx_buff, NULL, _rxbuff),
+                           BT_GATT_PERM_READ_ENCRYPT, read_rx_buff, NULL, NULL),
     BT_GATT_CCC(input_ccc_changed, BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT),
     BT_GATT_DESCRIPTOR(BT_UUID_HIDS_REPORT_REF, BT_GATT_PERM_READ_ENCRYPT, read_hids_report_ref,
                        NULL, &data_input),
-    */
     
     BT_GATT_CHARACTERISTIC(BT_UUID_HIDS_CTRL_POINT, BT_GATT_CHRC_WRITE_WITHOUT_RESP,
                            BT_GATT_PERM_WRITE, NULL, write_ctrl_point, &ctrl_point));
