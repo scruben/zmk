@@ -282,10 +282,13 @@ static int trackpad_init(const struct device *_arg) {
     if(zmk_config_bind(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY, &mouseSensitivity, sizeof(mouseSensitivity), true, NULL, trackpad) == NULL) {
         LOG_ERR("Failed to bind mouse sensitivity");
     }
+    // Initialize default registers, will be overwritten if saved
+    trackpad_registers = iqs5xx_reg_config_default();
     // Bind config - mark saveable
     if(zmk_config_bind(ZMK_CONFIG_CUSTOM_IQS5XX_REGS, &trackpad_registers, sizeof(struct iqs5xx_reg_config), true, trackpad_config_on_update, trackpad) == NULL) {
         LOG_ERR("Failed to bind trackpad config");
     }
+    
 
     int err = 0;
     trig.type = SENSOR_TRIG_DATA_READY;

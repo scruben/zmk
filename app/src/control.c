@@ -109,10 +109,13 @@ int zmk_control_get_config (uint8_t *buffer, uint16_t len) {
     switch (zmk_endpoints_selected()) {
 #if IS_ENABLED(CONFIG_ZMK_USB)
         case ZMK_ENDPOINT_USB: {
-            int err = zmk_usb_hid_send_report((uint8_t *)_zmk_control_input_buffer, _zmk_control_input_buffer_size);
+            int err = zmk_usb_hid_send_report(_zmk_control_input_buffer, _zmk_control_input_buffer_size);
             if (err) {
                 LOG_ERR("FAILED TO SEND OVER USB: %d", err);
             }
+            k_free(_zmk_control_input_buffer);
+            _zmk_control_input_buffer = NULL;
+            _zmk_control_input_buffer_size = 0;
             break;
         }
 #endif /* IS_ENABLED(CONFIG_ZMK_USB) */
