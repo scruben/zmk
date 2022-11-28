@@ -42,11 +42,11 @@ struct {
     // View
     enum dsp_view view;
     // Battery percentage
-    uint8_t batt_percent;
+    int batt_percent;
     // Battery sprite
-    uint8_t batt_sprite;
+    int batt_sprite;
     // Charging
-    uint8_t charge;
+    int charge;
 
     // Displayed time and date strings
     char conf_time_dsp[16];
