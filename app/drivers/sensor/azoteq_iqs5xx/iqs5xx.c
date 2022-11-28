@@ -39,7 +39,7 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default () {
     regconf.filterSettings =            MAV_FILTER | IIR_FILTER /* | IIR_SELECT static mode */;
     regconf.filterDynBottomBeta =        5;
     regconf.filterDynLowerSpeed =        6;
-    regconf.filterDynUpperSpeed =        512;
+    regconf.filterDynUpperSpeed =        100;
 
     regconf.initScrollDistance =        25;
     
