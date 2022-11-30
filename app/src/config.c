@@ -203,4 +203,102 @@ int zmk_config_write (enum zmk_config_key key) {
     return 0;
 }
 
+//***********************************
+// Config -> keymap transformations
+//***********************************
+// Move to another file?
+
+// Configuration single bit ID to device name string
+const char *CONF_ID_DEVICE[] = {
+    "TRANS",                    // 0
+    "BCKLGHT",                  // 1
+    "BLUETOOTH",                // 2
+    "CAPS_WORD",                // 3
+    "EXT_POWER",                // 4
+    "GRAVE_ESCAPE",             // 5
+    "KEY_PRESS",                // 6
+    "KEY_REPEAT",               // 7
+    "KEY_TOGGLE",               // 8
+    "LAYER_TAP",                // 9
+    "MAC_TAP",                  // 10
+    "MAC_PRESS",                // 11
+    "MAC_REL",                  // 12
+    "MAC_TAP_TIME",             // 13
+    "MAC_WAIT_TIME",            // 14
+    "MAC_WAIT_REL",             // 15
+    "MOD_TAP",                  // 16
+    "MO",                       // 17
+    "MOUSE_KEY_PRESS",          // 18
+    "MOUSE_MOVE",               // 19
+    "MOUSE_SCROLL",             // 20
+    "NONE",                     // 21
+    "OUTPUTS",                  // 22
+    "RESET",                    // 23
+    "BOOTLOAD",                 // 24
+    "RGB_UG",                   // 25
+    "ENC_KEY_PRESS",            // 26
+    "STICKY_KEY",               // 27
+    "STICKY_LAYER",             // 28
+    "TO_LAYER",                 // 29
+    "TOGGLE_LAYER",             // 30
+};
+
+/**
+ * @brief Get keymap device name eg. "KEY_PRESS" from id = 6. id is the index of corresponding CONF_ID_DEVICE row
+ * 
+ * @param id 
+ * @return char* 
+ */
+char *zmk_config_keymap_device_name (uint8_t id) {
+    // Return NULL if not found
+    if(id > sizeof(CONF_ID_DEVICE) / sizeof(const char *))
+        return NULL;
+
+    return CONF_ID_DEVICE[id];
+}
+
+/**
+ * @brief Get keymap device id eg. device_name = "KEY_PRESS" returns 6. Inverse of zmk_config_keymap_device_name
+ * 
+ * @param device_name 
+ * @return Device id, -1 on error
+ */
+int zmk_config_keymap_device_id (char *device_name) {
+    
+    for(int i = 0; i < sizeof(CONF_ID_DEVICE) / sizeof(const char *); i++) {
+        if(strcmp(device_name, CONF_ID_DEVICE[i]) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
+int zmk_config_keymap_conf_to_binding (uint8_t device, uint32_t param, struct zmk_behavior_binding *binding) {
+    char *device_name = zmk_config_keymap_device_name(device);
+    if(device_name == NULL) {
+        return -1;
+    }
+
+    binding->behavior_dev = device_name;
+    binding->param1 = param;
+    binding->param2 = 0;
+
+    return 0;
+}
+
+int zmk_config_keymap_binding_to_conf (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item) {
+    int id = zmk_config_keymap_device_id(binding->behavior_dev);
+    if(id < 0) {
+        return -1;
+    }
+
+    item->device = (uint8_t)id;
+    item->param = binding->param1;
+
+    return 0;
+}
+
+
+
 #endif

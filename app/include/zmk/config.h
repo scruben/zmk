@@ -6,6 +6,7 @@
 #include <kernel.h>
 #include <device.h>
 #include <stdint.h>
+#include <zmk/behavior.h>
 
 #define ZMK_CONFIG_MAX_FIELD_SIZE       CONFIG_ZMK_CONFIG_MAX_FIELD_SIZE
 #define ZMK_CONFIG_MAX_FIELDS           CONFIG_ZMK_CONFIG_MAX_FIELDS
@@ -132,3 +133,33 @@ int zmk_config_read (enum zmk_config_key key);
  * @return int 
  */
 int zmk_config_write (enum zmk_config_key key);
+
+
+//***********************************
+// Config -> keymap transformations
+//***********************************
+// Move to another file?
+
+struct __attribute__((packed)) zmk_config_keymap_item {
+    uint8_t device;
+    uint32_t param;
+};
+
+/**
+ * @brief Transform config keymap item to zmk_behavior_binding. Sets binding
+ * 
+ * @param device Device ID from config
+ * @param param Device parameter. Note: only 1 parameter is saved in config to save memory
+ * @param binding This field is altered if corresponding device is found. Should not be NULL!
+ * @return 0 on success, -1 on error
+ */
+int zmk_config_keymap_conf_to_binding (uint8_t device, uint32_t param, struct zmk_behavior_binding *binding);
+
+/**
+ * @brief Transform zmk_behavior_binding to zmk_config_keymap_item
+ * 
+ * @param binding 
+ * @param item 
+ * @return 0 on success, -1 on error
+ */
+int zmk_config_keymap_binding_to_conf (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item);

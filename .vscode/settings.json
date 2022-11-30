@@ -25,7 +25,8 @@
     "config.h": "c",
     "nvs_flash.h": "c",
     "flash_map.h": "c",
-    "nvs.h": "c"
+    "nvs.h": "c",
+    "keymap.h": "c"
   },
   "python.formatting.provider": "black",
   "cmake.sourceDirectory": "${workspaceFolder}/app"

@@ -25,6 +25,11 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/events/sensor_event.h>
 
+#if IS_ENABLED(CONFIG_ZMK_CONFIG)
+#include <zmk/config.h>
+#endif
+
+
 static zmk_keymap_layers_state_t _zmk_keymap_layer_state = 0;
 static uint8_t _zmk_keymap_layer_default = 0;
 
@@ -71,6 +76,12 @@ static struct zmk_behavior_binding zmk_keymap[ZMK_KEYMAP_LAYERS_LEN][ZMK_KEYMAP_
 
 static const char *zmk_keymap_layer_names[ZMK_KEYMAP_LAYERS_LEN] = {
     DT_INST_FOREACH_CHILD(0, LAYER_LABEL)};
+
+
+#if IS_ENABLED(CONFIG_ZMK_CONFIG)
+// Keymap from zmk_config
+struct zmk_config_keymap_item zmk_config_keymap[ZMK_KEYMAP_LAYERS_LEN][ZMK_KEYMAP_LEN];
+#endif
 
 #if ZMK_KEYMAP_HAS_SENSORS
 
@@ -187,7 +198,7 @@ int zmk_keymap_apply_position_state(uint8_t source, int layer, uint32_t position
     behavior = device_get_binding(binding.behavior_dev);
 
     if (!behavior) {
-        LOG_WRN("No behavior assigned to %d on layer %d", position, layer);
+        LOG_WRN("No behavior assigned to %d on layer %d %s", position, layer, binding.behavior_dev);
         return 1;
     }
 
@@ -308,9 +319,46 @@ int keymap_listener(const zmk_event_t *eh) {
     return -ENOTSUP;
 }
 
+#if IS_ENABLED(CONFIG_ZMK_CONFIG)
+void zmk_keymap_updated (struct zmk_config_field *field) {
+    for(int layer = 0; layer < ZMK_KEYMAP_LAYERS_LEN; layer++) {
+        for(int key = 0; key < ZMK_KEYMAP_LEN; key++) {
+            struct zmk_config_keymap_item *item = &zmk_config_keymap[layer][key];
+            //LOG_ERR("Set key layer %i key %i to %i 0x%X", layer, key, item->device, item->param);
+            if(zmk_config_keymap_conf_to_binding(item->device, item->param, &zmk_keymap[layer][key]) < 0) {
+                LOG_ERR("Failed to update layer %i key %i: Unknown device id: %i\n", layer, key, item->device);
+            }
+        }
+    }
+}
+
+static int keymap_init () {
+    // Initialize zmk_config keymap
+    for(int layer = 0; layer < ZMK_KEYMAP_LAYERS_LEN; layer++) {
+        for(int key = 0; key < ZMK_KEYMAP_LEN; key++) {
+            struct zmk_behavior_binding *bind = &zmk_keymap[layer][key];
+            struct zmk_config_keymap_item *item = &zmk_config_keymap[layer][key];
+            if(zmk_config_keymap_binding_to_conf(bind, item) < 0) {
+                LOG_ERR("Failed to initialize layer %i key %i: Unknown device name: %s\n", layer, key, bind->behavior_dev);
+            }
+        }
+    }
+
+    if(zmk_config_bind(ZMK_CONFIG_KEY_KEYMAP, zmk_config_keymap, sizeof(zmk_config_keymap), true, zmk_keymap_updated, NULL) == NULL) {
+        LOG_ERR("Failed to bind keymap");
+    }
+    return 0;
+}
+#endif
+
 ZMK_LISTENER(keymap, keymap_listener);
 ZMK_SUBSCRIPTION(keymap, zmk_position_state_changed);
 
 #if ZMK_KEYMAP_HAS_SENSORS
 ZMK_SUBSCRIPTION(keymap, zmk_sensor_event);
 #endif /* ZMK_KEYMAP_HAS_SENSORS */
+
+
+#if IS_ENABLED(CONFIG_ZMK_CONFIG)
+SYS_INIT(keymap_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

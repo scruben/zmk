@@ -8,11 +8,13 @@
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
-static uint8_t *data_buffer = NULL;
+uint8_t *data_buffer = NULL;
 static uint16_t data_buffer_len = 0;
 static uint8_t chunk_recv_len = 0;
 
-static struct zmk_control_msg_header data_header;
+struct zmk_control_msg_header data_header;
+
+static struct k_sem data_parse_sem;
 
 /**
  * @brief Set configuration values
@@ -84,7 +86,7 @@ int zmk_control_get_config (uint8_t *buffer, uint16_t len) {
         _zmk_control_input_buffer_size = 0;
     }
     // Allocate input buffer
-    _zmk_control_input_buffer_size = sizeof(struct zmk_control_msg_header) + (sizeof(struct zmk_control_msg_get_config) - 1) + field->size;
+    _zmk_control_input_buffer_size = (sizeof(struct zmk_control_msg_get_config) - 1) + field->size;
     _zmk_control_input_buffer = k_malloc(_zmk_control_input_buffer_size);
 
     if(_zmk_control_input_buffer == NULL) {
@@ -93,32 +95,54 @@ int zmk_control_get_config (uint8_t *buffer, uint16_t len) {
         return -1;
     }
 
-    struct zmk_control_msg_header *hdr = (struct zmk_control_msg_header *)_zmk_control_input_buffer;
+    int total_size = (sizeof(struct zmk_control_msg_get_config) - 1) + field->size;
+
+    uint8_t in_buffer[32];
+
+    struct zmk_control_msg_header *hdr = (struct zmk_control_msg_header *)in_buffer;
     hdr->report_id = 0x05;
     hdr->cmd = ZMK_CONTROL_CMD_GET_CONFIG;
     hdr->crc = 0;
     hdr->chunk_offset = 0;
-    hdr->chunk_size = (sizeof(struct zmk_control_msg_get_config) - 1) + field->size;
-    hdr->size = hdr->chunk_size;
+    hdr->chunk_size = total_size < ZMK_CONTROL_REPORT_DATA_SIZE ? total_size : ZMK_CONTROL_REPORT_DATA_SIZE;
+    hdr->size = total_size;
     
-    struct zmk_control_msg_get_config *resp = _zmk_control_input_buffer + sizeof(struct zmk_control_msg_header);
+    struct zmk_control_msg_get_config *resp = _zmk_control_input_buffer;
     resp->key = request->key;
     resp->size = request->size;
     memcpy(&resp->data, field->data, field->size);
-    
+
     switch (zmk_endpoints_selected()) {
-#if IS_ENABLED(CONFIG_ZMK_USB)
+//#if IS_ENABLED(CONFIG_ZMK_USB)
         case ZMK_ENDPOINT_USB: {
-            int err = zmk_usb_hid_send_report(_zmk_control_input_buffer, _zmk_control_input_buffer_size);
-            if (err) {
-                LOG_ERR("FAILED TO SEND OVER USB: %d", err);
+            uint32_t total = 0;
+            // Send in 32 byte chunks
+            while(total < _zmk_control_input_buffer_size) {
+                uint32_t diff = _zmk_control_input_buffer_size - total;
+                // Set header info
+                hdr->chunk_offset = total;
+                hdr->chunk_size = diff < ZMK_CONTROL_REPORT_DATA_SIZE ? diff : ZMK_CONTROL_REPORT_DATA_SIZE;
+
+                // Copy new data
+                memcpy(in_buffer + sizeof(struct zmk_control_msg_header), _zmk_control_input_buffer + total, hdr->chunk_size);
+                
+                int err = zmk_usb_hid_send_report(in_buffer, ZMK_CONTROL_REPORT_SIZE);
+                if (err) {
+                    LOG_ERR("FAILED TO SEND OVER USB: %d", err);
+                    // break or retry ???
+                    break;
+                }
+                
+                //LOG_ERR("Send report %i/%i", total, hdr->size);
+                k_msleep(10);
+                total += hdr->chunk_size;
             }
             k_free(_zmk_control_input_buffer);
             _zmk_control_input_buffer = NULL;
             _zmk_control_input_buffer_size = 0;
             break;
         }
-#endif /* IS_ENABLED(CONFIG_ZMK_USB) */
+//#endif /* IS_ENABLED(CONFIG_ZMK_USB) */
 
 #if IS_ENABLED(CONFIG_ZMK_BLE)
         case ZMK_ENDPOINT_BLE: {
@@ -201,6 +225,23 @@ int zmk_control_parse (uint8_t *buffer, size_t len) {
         data_buffer_len = 0;
         chunk_recv_len = 0;
 
+        k_sem_give(&data_parse_sem);
+    }
+
+    return err;
+}
+
+// Thread
+static void _zmk_control_thread(void *arg, void *unused2, void *unused3) {
+    k_sem_init(&data_parse_sem, 0, UINT32_MAX);
+    
+    while(1) {
+
+        // Wait until message is ready
+        k_sem_take(&data_parse_sem, K_FOREVER);
+        LOG_ERR("PARSE MESSAGE\n");
+        int err = 0;
+        
         // Message ready
         switch((enum zmk_control_cmd_t)data_header.cmd) {
             case ZMK_CONTROL_CMD_CONNECT:
@@ -224,7 +265,10 @@ int zmk_control_parse (uint8_t *buffer, size_t len) {
             free(data_buffer);
             data_buffer = NULL;
         }
+        
+
     }
 
-    return err;
 }
+
+K_THREAD_DEFINE(zmk_control_thr, 4096, _zmk_control_thread, NULL, NULL, NULL, K_PRIO_PREEMPT(10), 0, 0);
