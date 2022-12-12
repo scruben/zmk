@@ -251,10 +251,10 @@ const char *CONF_ID_DEVICE[] = {
  */
 char *zmk_config_keymap_device_name (uint8_t id) {
     // Return NULL if not found
-    if(id > sizeof(CONF_ID_DEVICE) / sizeof(const char *))
+    if((id & 0x7F) > sizeof(CONF_ID_DEVICE) / sizeof(const char *))
         return NULL;
 
-    return CONF_ID_DEVICE[id];
+    return CONF_ID_DEVICE[(id & 0x7F)];
 }
 
 /**
@@ -281,8 +281,16 @@ int zmk_config_keymap_conf_to_binding (uint8_t device, uint32_t param, struct zm
     }
 
     binding->behavior_dev = device_name;
-    binding->param1 = param;
-    binding->param2 = 0;
+
+    // Using MSB of device to determine if parameter is split in to two 16-bit values or single 32-bit
+    if(device & 0x80) {
+        binding->param1 = (int16_t)(param & 0xFFFF);
+        binding->param2 = (int16_t)(param >> 16);
+    }
+    else {
+        binding->param1 = param;
+        binding->param2 = 0;
+    }
 
     return 0;
 }
@@ -292,9 +300,15 @@ int zmk_config_keymap_binding_to_conf (struct zmk_behavior_binding *binding, str
     if(id < 0) {
         return -1;
     }
-
-    item->device = (uint8_t)id;
-    item->param = binding->param1;
+    // Split in to 2 params if param2 is not 0
+    if(binding->param2 != 0) {
+        item->device = (uint8_t)id | 0x80;
+        item->param = ((int16_t)binding->param1) | (((int16_t)binding->param2) << 16);
+    }
+    else {
+        item->device = (uint8_t)id;
+        item->param = binding->param1;
+    }
 
     return 0;
 }
