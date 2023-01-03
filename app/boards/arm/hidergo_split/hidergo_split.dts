@@ -23,6 +23,10 @@
 		zmk,battery = &vbatt;
 	};
 
+	aliases {
+		indicatorled = &indled;
+	};
+
 	default_transform: keymap_transform_0 {
 		compatible = "zmk,matrix-transform";
 		columns = <13>;
@@ -43,6 +47,14 @@
 		output-ohms = <2000000>;
 		full-ohms = <(2000000 + 806000)>;
 	};
+
+	leds {
+		compatible = "gpio-leds";
+		indled: led_0 {
+			label = "INDICATOR_LED";
+			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		};
+	};
 };
 
 &adc {
@@ -60,8 +72,6 @@
 &gpiote {
 	status = "okay";
 };
-
-
 
 &usbd {
 	status = "okay";
