@@ -52,6 +52,8 @@ static int16_t lastXScrollReport = 0;
 
 static bool threeFingersPressed = false;
 
+#define MOUSE_MAX_SENSITIVITY     2
+
 static uint8_t mouseSensitivity = 128;
 
 struct iqs5xx_reg_config trackpad_registers;
@@ -258,8 +260,8 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
     if(!hasGesture) {
         // No gesture, can send mouse delta position
         if(fingers == 1) {
-            float sensMp = (float)mouseSensitivity/128.0F;
-            zmk_hid_mouse_movement_set((int16_t)((float)-pos_y * sensMp), (int16_t)((float)pos_x * sensMp));
+            float sensMp = (float)mouseSensitivity/255.0F;
+            zmk_hid_mouse_movement_set((int16_t)((float)-pos_y * sensMp * MOUSE_MAX_SENSITIVITY), (int16_t)((float)pos_x * sensMp * MOUSE_MAX_SENSITIVITY));
             inputMoved = true;
         }
     }
