@@ -14,6 +14,7 @@
 #include <zmk/keymap.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/usb_conn_state_changed.h>
+#include <zmk/indicator.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -47,6 +48,7 @@ enum zmk_usb_conn_state zmk_usb_get_conn_state() {
 
 void usb_status_cb(enum usb_dc_status_code status, const uint8_t *params) {
     usb_status = status;
+    zmk_indicator_mode(zmk_usb_get_conn_state() != ZMK_USB_CONN_NONE ? ZMK_INDICATOR_MODE_NORMAL : ZMK_INDICATOR_MODE_BLINK);
     k_work_submit(&usb_status_notifier_work);
 };
 
