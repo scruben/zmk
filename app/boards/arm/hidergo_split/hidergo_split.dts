@@ -143,9 +143,9 @@
 };
 
 &left_encoder {
-    status = "okay";
+    status = "disabled";
 };
 
 &right_encoder {
-    status = "okay";
+    status = "disabled";
 };

@@ -76,3 +76,7 @@
         reset-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
     };
 };
+
+&right_encoder {
+    status = "okay";
+};
