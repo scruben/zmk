@@ -265,7 +265,7 @@ int zmk_keymap_sensor_triggered(uint8_t sensor_number, const struct sensor_value
                     log_strdup(binding->behavior_dev));
 
             behavior = device_get_binding(binding->behavior_dev);
-
+            
             if (!behavior) {
                 LOG_DBG("No behavior assigned to %d on layer %d", sensor_number, layer);
                 continue;
