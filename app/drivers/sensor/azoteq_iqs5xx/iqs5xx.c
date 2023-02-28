@@ -4,8 +4,6 @@
  *
  * SPDX-License-Identifier: MIT
  */
-//#define CONFIG_IQS5XX
-#ifdef CONFIG_IQS5XX
 #define DT_DRV_COMPAT azoteq_iqs5xx
 
 #include <drivers/gpio.h>
@@ -104,36 +102,9 @@ static int iqs5xx_attr_set(const struct device *dev, enum sensor_channel chan,
 }
 
 /**
- * @brief Get sensor channel. Not to be confused with trackpad internal channel.
- *
- * @param dev
- * @param chan
- * @param val
- * @return int
- */
-static int iqs5xx_channel_get(const struct device *dev, enum sensor_channel chan,
-                              struct sensor_value *val) {
-    const struct iqs5xx_data *data = dev->data;
-    switch (chan) {
-    case SENSOR_CHAN_POS_DX:
-        val->val1 = data->rx;
-        break;
-    case SENSOR_CHAN_POS_DY:
-        val->val1 = data->ry;
-        break;
-    case SENSOR_CHAN_POS_DZ:
-        val->val1 = data->gesture;
-        val->val2 = data->fingers;
-        break;
-    default:
-        return -ENOTSUP;
-    }
-    return 0;
-}
-
-static int iqs5xx_sample_fetch(const struct device *dev) {
-    //LOG_ERR("\nSAMPLE FETCH");
-
+ * @brief Read data from IQS5XX
+*/
+static int iqs5xx_sample_fetch (const struct device *dev) {
     uint8_t buffer[44];
     int res = iqs5xx_seq_read(dev, GestureEvents0_adr, buffer, 44);
 	iqs5xx_write(dev, END_WINDOW, 0, 1);
@@ -143,64 +114,32 @@ static int iqs5xx_sample_fetch(const struct device *dev) {
     }
 
     struct iqs5xx_data *data = dev->data;
-    // define struct to make data harvest easier
-    struct iqs5xx_sample {
-        int16_t i16RelX[6];
-        int16_t i16RelY[6];
-        uint16_t ui16AbsX[6];
-        uint16_t ui16AbsY[6];
-        uint16_t ui16TouchStrength[6];
-        uint8_t ui8NoOfFingers;
-        uint8_t gesture;
-    } d;
+    
+    // Gestures
+    data->raw_data.gestures0 =      buffer[0];
+    data->raw_data.gestures1 =      buffer[1];
+    // System info
+    data->raw_data.system_info0 =   buffer[2];
+    data->raw_data.system_info1 =   buffer[3];
+    // Number of fingers
+    data->raw_data.finger_count =   buffer[4];
+    // Relative X position
+    data->raw_data.rx =             SWPEND16(*(int16_t*)&buffer[5]);
+    // Relative Y position
+    data->raw_data.ry =             SWPEND16(*(int16_t*)&buffer[7]);
 
-    d.ui8NoOfFingers = buffer[4];
-    uint8_t i;
-    static uint8_t ui8FirstTouch = 0;
-    if (d.ui8NoOfFingers != 0) {
-        if (!(ui8FirstTouch)) {
-            ui8FirstTouch = 1;
-        }
-        
-        // calculate relative data
-        d.i16RelX[1] = ((buffer[5] << 8) | (buffer[6]));
-        d.i16RelY[1] = ((buffer[7] << 8) | (buffer[8]));
-
-        // calculate absolute position of max 5 fingers
-        for (i = 0; i < 5; i++) {
-            d.ui16AbsX[i + 1] = ((buffer[(7 * i) + 9] << 8) |
-                                 (buffer[(7 * i) + 10])); // 9-16-23-30-37//10-17-24-31-38
-            d.ui16AbsY[i + 1] = ((buffer[(7 * i) + 11] << 8) |
-                                 (buffer[(7 * i) + 12])); // 11-18-25-32-39//12-19-26-33-40
-            d.ui16TouchStrength[i + 1] = ((buffer[(7 * i) + 13] << 8) |
-                                          (buffer[(7 * i) + 14])); // 13-20-27-34-11/14-21-28-35-42
-            // d.1ui8Area[i+1] = (buffer[7*i+15]); //15-22-29-36-43
-        }
-    } else {
-        ui8FirstTouch = 0;
+    // Fingers
+    for(int i = 0; i < 5; i++) {
+        const int p = 9 + (7 * i);
+        // Absolute X
+        data->raw_data.fingers[i].ax = SWPEND16(*(uint16_t*)&buffer[p + 0]);
+        // Absolute Y
+        data->raw_data.fingers[i].ay = SWPEND16(*(uint16_t*)&buffer[p + 2]);
+        // Touch strength
+        data->raw_data.fingers[i].strength = SWPEND16(*(uint16_t*)&buffer[p + 4]);
+        // Area
+        data->raw_data.fingers[i].area= buffer[p + 6];
     }
-
-    uint8_t multiTouchGesture = 0;
-    // gesture bank 1
-    d.gesture = buffer[0];
-    // gesture bank 2
-    multiTouchGesture = buffer[1];
-
-    // set data to device data portion
-    data->rx = d.i16RelX[1];
-    data->ry = d.i16RelY[1];
-    data->ax = d.ui16AbsX[1];
-    data->ay = d.ui16AbsY[1];
-    if(multiTouchGesture != 0) {
-        // msb to high if multitouch
-        data->gesture = multiTouchGesture | 0x80;
-    }
-    else {
-        data->gesture = d.gesture;
-    }
-    data->fingers = d.ui8NoOfFingers;
-    //LOG_ERR("fingers in iqs5xx %d", d.ui8NoOfFingers);
-
     return 0;
 }
 
@@ -234,36 +173,35 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
                 // Fetch the sample
                 iqs5xx_sample_fetch(dev);
                 
-                // Trigger sensor
-                if(data->data_ready_trigger != NULL) {
-                    data->data_ready_handler(dev, data->data_ready_trigger);
+                // Trigger
+                if(data->data_ready_handler != NULL) {
+                    data->data_ready_handler(dev, &data->raw_data);
                 }
             }
         #elif CONFIG_IQS5XX_INTERRUPT
             k_sem_take(&data->gpio_sem, K_FOREVER);
             
             iqs5xx_sample_fetch(dev);
-            // Trigger sensor
-            if(data->data_ready_trigger != NULL) {
-                data->data_ready_handler(dev, data->data_ready_trigger);
+            // Trigger 
+            if(data->data_ready_handler != NULL) {
+                data->data_ready_handler(dev, &data->raw_data);
             }
 
         #endif
     }
 }
 
-int iqs5xx_trigger_set(const struct device *dev, const struct sensor_trigger *trig,
-                     sensor_trigger_handler_t handler) {
+/**
+ * @brief Sets the trigger handler 
+*/
+int iqs5xx_trigger_set(const struct device *dev, iqs5xx_trigger_handler_t handler) {
     struct iqs5xx_data *data = dev->data;
-
-    data->data_ready_trigger = trig;
     data->data_ready_handler = handler;
-
     return 0;
 }
 
 /**
- * @brief 
+ * @brief Called when data ready pin goes active. Releases the semaphore allowing thread to run.
  * 
  * @param dev 
  * @param cb 
@@ -347,7 +285,6 @@ int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_con
 }
 
 static int iqs5xx_init(const struct device *dev) {
-    LOG_DBG("IQS5xx INIT\r\n");
     struct iqs5xx_data *data = dev->data;
     const struct iqs5xx_config *config = dev->config;
     int err = 0;
@@ -374,17 +311,10 @@ static int iqs5xx_init(const struct device *dev) {
     return 0;
 }
 
-static const struct sensor_driver_api iqs5xx_driver_api = {
-    .trigger_set = iqs5xx_trigger_set,
-    .sample_fetch = iqs5xx_sample_fetch,
-    .channel_get = iqs5xx_channel_get,
-    .attr_set = iqs5xx_attr_set,
-};
-
 
 static struct iqs5xx_data iqs5xx_data = {
     .i2c = DEVICE_DT_GET(DT_BUS(DT_DRV_INST(0))),
-    .data_ready_trigger = NULL
+    .data_ready_handler = NULL
 };
 
 static const struct iqs5xx_config iqs5xx_config = {
@@ -394,8 +324,6 @@ static const struct iqs5xx_config iqs5xx_config = {
 };
 
 DEVICE_DT_INST_DEFINE(0, iqs5xx_init, NULL, &iqs5xx_data, &iqs5xx_config,
-                      POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, &iqs5xx_driver_api);
+                      POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY, NULL);
 
 K_THREAD_DEFINE(thread, 1024, iqs5xx_thread, DEVICE_DT_GET(DT_DRV_INST(0)), NULL, NULL, K_PRIO_COOP(10), 0, 0);
-
-#endif

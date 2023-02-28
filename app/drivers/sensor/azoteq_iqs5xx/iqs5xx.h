@@ -14,32 +14,54 @@
 #include <drivers/i2c.h>
 #include <sys/util.h>
 #include <drivers/gpio.h>
-/*
-struct iqs5xx_sample {
-	int16_t 	i16RelX[6];
-    int16_t 	i16RelY[6];
-    uint16_t 	ui16AbsX[6];
-    uint16_t 	ui16AbsY[6];
-    uint16_t 	ui16TouchStrength[6];
-    uint8_t 	ui8NoOfFingers;
-    uint8_t     gesture;
-};*/
+
+// Single finger data
+struct iqs5xx_finger {
+    // Absolute Y position
+    uint16_t ax;
+    // Absolute X position
+    uint16_t ay;
+    // Touch strength
+    uint16_t strength;
+    // Touch area
+    uint16_t area;
+};
+
+// Data read from the device
+struct iqs5xx_rawdata {
+    // Gesture events 0: Single tap, press and hold, swipe -x, swipe +x, swipe -y, swipe +y
+    uint8_t gestures0;
+    // Gesture events 1: 2 finger tap, scroll, zoom
+    uint8_t gestures1;
+    // System info 0
+    uint8_t system_info0;
+    // System info 1
+    uint8_t system_info1;
+    // Number of fingers
+    uint8_t finger_count;
+    // Relative X position
+    int16_t rx;
+    // Relative Y position
+    int16_t ry;
+    // Fingers
+    struct iqs5xx_finger fingers[5];
+};
+
+// Callback
+typedef void (*iqs5xx_trigger_handler_t)(const struct device *dev, const struct iqs5xx_rawdata *data);
 
 struct iqs5xx_data {
+    // I2C device
 	const struct device *i2c;
-    //relative x,y
-    int16_t rx, ry;
-    //absolute x,y
-    uint16_t ax, ay;
-    uint8_t gesture;
-    uint8_t fingers;
     const struct device *dev;
-    const struct sensor_trigger *data_ready_trigger;
+    // Data ready callback
 	struct gpio_callback dr_cb;
-    sensor_trigger_handler_t data_ready_handler;
-    //K_THREAD_STACK_MEMBER(thread_stack, 2000);
+    // Data ready callback
+    iqs5xx_trigger_handler_t data_ready_handler;
+    // Device data
+    struct iqs5xx_rawdata raw_data;
+    // GPIO semaphore
     struct k_sem gpio_sem;
-    struct k_thread thread;
 };
 
 struct iqs5xx_config {
@@ -48,10 +70,6 @@ struct iqs5xx_config {
     //Data Ready pin
     uint8_t dr_pin, dr_flags;
 };
-
-__subsystem struct iqs5xx_sensor_driver_api {
-};
-
 
 // Register configuration structure
 struct __attribute__((packed)) iqs5xx_reg_config {
@@ -94,6 +112,8 @@ struct iqs5xx_reg_config iqs5xx_reg_config_default ();
  * @return int 
  */
 int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config);
+
+int iqs5xx_trigger_set(const struct device *dev, iqs5xx_trigger_handler_t handler);
 
 // Byte swap macros
 #define SWPEND16(n) ((n >> 8) | (n << 8))

@@ -8,8 +8,6 @@
  * @copyright Copyright (c) 2022
  * 
  */
-//#define CONFIG_IQS5XX
-#ifdef CONFIG_IQS5XX
 #include <device.h>
 #include <init.h>
 #include <drivers/sensor.h>
@@ -38,8 +36,6 @@ static bool isHolding = false;
 //LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 static const struct device *trackpad;
-// Sensor trigger
-static struct sensor_trigger trig;
 
 // Input active flag
 static bool inputEventActive = false;
@@ -138,61 +134,23 @@ static inline void trackpad_tap_and_hold(bool g) {
 
 
 // Sensor trigger handler
-static void trackpad_trigger_handler(const struct device *dev, const struct sensor_trigger *trig) {
+static void trackpad_trigger_handler(const struct device *dev, const struct iqs5xx_rawdata *data) {
 
-    // Fetched sensor value
-    struct sensor_value value;
-
-    // X, Y
-    int16_t pos_x = 0xFFFF, pos_y = 0xFFFF;
-    // Gesture/Z channel
-    uint8_t gesture = 0xFF;
-    // Fingers
-    uint8_t fingers = 0;
-
-    // Fetch X channel
-    int err = sensor_channel_get(dev, SENSOR_CHAN_POS_DX, &value);
-    if(err) {
-        LOG_ERR("Failed to fetch X channel\r\n");
-        return;
-    }
-    // Set pos_x 
-    pos_x = value.val1;
-
-    // Fetch Y channel
-    err = sensor_channel_get(dev, SENSOR_CHAN_POS_DY, &value);
-    if(err) {
-        LOG_ERR("Failed to fetch Y channel\r\n");
-        return;
-    }
-    // Set pos_y 
-    pos_y = value.val1;
-
-    // Fetch Z/Gesture channel + fingers
-    err = sensor_channel_get(dev, SENSOR_CHAN_POS_DZ, &value);
-    if(err) {
-        LOG_ERR("Failed to fetch gesture channel\r\n");
-        return;
-    }
-    // Set pos_y 
-    gesture = value.val1;
-    // Set fingers
-    fingers = value.val2;
 
     bool multiTouch = false;
     // Check if msb is high, meaning multi touch
-    if(gesture & 0x80) {
+    if(data->finger_count > 1) {
         multiTouch = true;
     }
 
     bool hasGesture = false;
 
-    if(fingers == 3 && !threeFingersPressed) {
+    if(data->finger_count == 3 && !threeFingersPressed) {
         threeFingerPressTime = k_uptime_get();
         threeFingersPressed = true;
     }
     
-    if(fingers == 0) {
+    if(data->finger_count == 0) {
         if(threeFingersPressed && k_uptime_get() - threeFingerPressTime < TRACKPAD_THREE_FINGER_CLICK_TIME) {
             hasGesture = true;
             //middleclick
@@ -202,16 +160,16 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
         threeFingersPressed = false;
     }
 
-    if(fingers != 2) {
+    if(data->finger_count != 2) {
         // Reset scroll
         zmk_hid_mouse_scroll_set(0, 0);
     }
 
     // Check if any gesture exists
-    if(gesture & 0x7F && !hasGesture) {
+    if((data->gestures0 || data->gestures1) && !hasGesture) {
         // Multi touch gestures
         if(multiTouch) {
-            switch(gesture & 0x7F) {
+            switch(data->gestures1) {
                 case GESTURE_TWO_FINGER_TAP:
                     hasGesture = true;
                     // Right click
@@ -220,9 +178,9 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
                     break;                   
                 case GESTURE_SCROLLG:
                     hasGesture = true;
-                    lastXScrollReport += pos_x;
+                    lastXScrollReport += data->rx;
                     // Pan can be always reported
-                    int8_t pan = -pos_y;
+                    int8_t pan = -data->ry;
                     // Report scroll only if a certain distance has been travelled
                     int8_t scroll = 0;
                     if(abs(lastXScrollReport) - (int16_t)SCROLL_REPORT_DISTANCE > 0) {
@@ -237,7 +195,7 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
         }
         // Single finger gestures
         else {
-            switch(gesture & 0x7F) {
+            switch(data->gestures0) {
                 case GESTURE_SINGLE_TAP:
                     // Left click
                     hasGesture = true;
@@ -257,14 +215,14 @@ static void trackpad_trigger_handler(const struct device *dev, const struct sens
 
     if(!hasGesture) {
         // No gesture, can send mouse delta position
-        if(fingers == 1) {
+        if(data->finger_count == 1) {
             float sensMp = (float)mouseSensitivity/128.0F;
-            zmk_hid_mouse_movement_set((int16_t)((float)-pos_y * sensMp), (int16_t)((float)pos_x * sensMp));
+            zmk_hid_mouse_movement_set((int16_t)((float)-data->ry * sensMp), (int16_t)((float)data->rx * sensMp));
             inputMoved = true;
         }
     }
 
-    lastFingerCount = fingers;
+    lastFingerCount = data->finger_count;
 
     if(inputMoved || hasGesture) {
         // Send mouse report
@@ -291,9 +249,7 @@ static int trackpad_init(const struct device *_arg) {
     
 
     int err = 0;
-    trig.type = SENSOR_TRIG_DATA_READY;
-	trig.chan = SENSOR_CHAN_ALL;
-	err = sensor_trigger_set(trackpad, &trig, trackpad_trigger_handler);
+    err = iqs5xx_trigger_set(trackpad, trackpad_trigger_handler);
     if(err) {
         
         return -EINVAL;
@@ -303,4 +259,3 @@ static int trackpad_init(const struct device *_arg) {
 }
 
 SYS_INIT(trackpad_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
-#endif
