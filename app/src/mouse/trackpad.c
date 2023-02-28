@@ -52,6 +52,11 @@ static uint8_t mouseSensitivity = 128;
 
 struct iqs5xx_reg_config trackpad_registers;
 
+struct {
+    float x;
+    float y;
+} accumPos;
+
 /**
  * @brief Called when `trackpad_registers` is updated via zmk_control/zmk_config
  * 
@@ -217,8 +222,24 @@ static void trackpad_trigger_handler(const struct device *dev, const struct iqs5
         // No gesture, can send mouse delta position
         if(data->finger_count == 1) {
             float sensMp = (float)mouseSensitivity/128.0F;
-            zmk_hid_mouse_movement_set((int16_t)((float)-data->ry * sensMp), (int16_t)((float)data->rx * sensMp));
-            inputMoved = true;
+            accumPos.x += -data->ry * sensMp;
+            accumPos.y += data->rx * sensMp;
+            int16_t xp = accumPos.x;
+            int16_t yp = accumPos.y;
+
+            uint8_t updatePos = 0;
+            if(fabsf(accumPos.x) >= 1) {
+                updatePos = 1;
+                accumPos.x = 0;
+            }
+            if(fabsf(accumPos.y) >= 1) {
+                updatePos = 1;
+                accumPos.y = 0;
+            }
+            if(updatePos) {
+                zmk_hid_mouse_movement_set(xp, yp);
+                inputMoved = true;
+            }
         }
     }
 
@@ -247,6 +268,8 @@ static int trackpad_init(const struct device *_arg) {
         LOG_ERR("Failed to bind trackpad config");
     }
     
+    accumPos.x = 0;
+    accumPos.y = 0;
 
     int err = 0;
     err = iqs5xx_trigger_set(trackpad, trackpad_trigger_handler);

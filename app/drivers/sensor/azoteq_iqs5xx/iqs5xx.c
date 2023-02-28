@@ -124,19 +124,19 @@ static int iqs5xx_sample_fetch (const struct device *dev) {
     // Number of fingers
     data->raw_data.finger_count =   buffer[4];
     // Relative X position
-    data->raw_data.rx =             SWPEND16(*(int16_t*)&buffer[5]);
+    data->raw_data.rx =             buffer[5] << 8 | buffer[6];
     // Relative Y position
-    data->raw_data.ry =             SWPEND16(*(int16_t*)&buffer[7]);
+    data->raw_data.ry =             buffer[7] << 8 | buffer[8];
 
     // Fingers
     for(int i = 0; i < 5; i++) {
         const int p = 9 + (7 * i);
         // Absolute X
-        data->raw_data.fingers[i].ax = SWPEND16(*(uint16_t*)&buffer[p + 0]);
+        data->raw_data.fingers[i].ax = buffer[p + 0] << 8 | buffer[p + 1];
         // Absolute Y
-        data->raw_data.fingers[i].ay = SWPEND16(*(uint16_t*)&buffer[p + 2]);
+        data->raw_data.fingers[i].ay = buffer[p + 2] << 8 | buffer[p + 3];
         // Touch strength
-        data->raw_data.fingers[i].strength = SWPEND16(*(uint16_t*)&buffer[p + 4]);
+        data->raw_data.fingers[i].strength = buffer[p + 4] << 8 | buffer[p + 5];
         // Area
         data->raw_data.fingers[i].area= buffer[p + 6];
     }
