@@ -143,7 +143,7 @@ static void trackpad_trigger_handler(const struct device *dev, const struct iqs5
 
 
     bool multiTouch = false;
-    // Check if msb is high, meaning multi touch
+    
     if(data->finger_count > 1) {
         multiTouch = true;
     }
@@ -156,6 +156,8 @@ static void trackpad_trigger_handler(const struct device *dev, const struct iqs5
     }
     
     if(data->finger_count == 0) {
+        accumPos.x = 0;
+        accumPos.y = 0;
         if(threeFingersPressed && k_uptime_get() - threeFingerPressTime < TRACKPAD_THREE_FINGER_CLICK_TIME) {
             hasGesture = true;
             //middleclick
@@ -172,45 +174,41 @@ static void trackpad_trigger_handler(const struct device *dev, const struct iqs5
 
     // Check if any gesture exists
     if((data->gestures0 || data->gestures1) && !hasGesture) {
-        // Multi touch gestures
-        if(multiTouch) {
-            switch(data->gestures1) {
-                case GESTURE_TWO_FINGER_TAP:
-                    hasGesture = true;
-                    // Right click
-                    trackpad_rightclick();
-                    zmk_hid_mouse_movement_set(0,0);
-                    break;                   
-                case GESTURE_SCROLLG:
-                    hasGesture = true;
-                    lastXScrollReport += data->rx;
-                    // Pan can be always reported
-                    int8_t pan = -data->ry;
-                    // Report scroll only if a certain distance has been travelled
-                    int8_t scroll = 0;
-                    if(abs(lastXScrollReport) - (int16_t)SCROLL_REPORT_DISTANCE > 0) {
-                        scroll = lastXScrollReport >= 0 ? 1 : -1;
-                        lastXScrollReport = 0;
-                    }
-                    zmk_hid_mouse_scroll_set(pan, scroll);
-                    zmk_hid_mouse_movement_set(0,0);
-                    //k_msleep(10);
-                    break;
-            }
+        switch(data->gestures1) {
+            case GESTURE_TWO_FINGER_TAP:
+                hasGesture = true;
+                // Right click
+                trackpad_rightclick();
+                zmk_hid_mouse_movement_set(0,0);
+                break;                   
+            case GESTURE_SCROLLG:
+                hasGesture = true;
+                lastXScrollReport += data->rx;
+                // Pan can be always reported
+                int8_t pan = -data->ry;
+                // Report scroll only if a certain distance has been travelled
+                int8_t scroll = 0;
+                if(abs(lastXScrollReport) - (int16_t)SCROLL_REPORT_DISTANCE > 0) {
+                    scroll = lastXScrollReport >= 0 ? 1 : -1;
+                    lastXScrollReport = 0;
+                }
+                zmk_hid_mouse_scroll_set(pan, scroll);
+                zmk_hid_mouse_movement_set(0,0);
+                //k_msleep(10);
+                break;
         }
-        // Single finger gestures
-        else {
-            switch(data->gestures0) {
-                case GESTURE_SINGLE_TAP:
-                    // Left click
-                    hasGesture = true;
-                    trackpad_leftclick();
-                    break;
-                case GESTURE_TAP_AND_HOLD:
-                    //drag n drop
-                    trackpad_tap_and_hold(true);
-                    isHolding = true;
-            }
+        switch(data->gestures0) {
+            case GESTURE_SINGLE_TAP:
+                // Left click
+                hasGesture = true;
+                trackpad_leftclick();
+                zmk_hid_mouse_movement_set(0,0);
+                break;
+            case GESTURE_TAP_AND_HOLD:
+                //drag n drop
+                trackpad_tap_and_hold(true);
+                zmk_hid_mouse_movement_set(0,0);
+                isHolding = true;
         }
     }
     
