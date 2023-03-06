@@ -48,6 +48,8 @@ static int16_t lastXScrollReport = 0;
 
 static bool threeFingersPressed = false;
 
+#define MOUSE_MAX_SENSITIVITY     2
+
 static uint8_t mouseSensitivity = 128;
 
 struct iqs5xx_reg_config trackpad_registers;
