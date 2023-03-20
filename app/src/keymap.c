@@ -80,7 +80,7 @@ static const char *zmk_keymap_layer_names[ZMK_KEYMAP_LAYERS_LEN] = {
 
 #if IS_ENABLED(CONFIG_ZMK_CONFIG)
 // Keymap from zmk_config
-struct zmk_config_keymap_item zmk_config_keymap[ZMK_KEYMAP_LAYERS_LEN][ZMK_KEYMAP_LEN];
+struct zmk_config_keymap_item zmk_config_keymap[ZMK_CONFIG_MAX_REBOUND_KEYS];
 #endif
 
 #if ZMK_KEYMAP_HAS_SENSORS
@@ -321,29 +321,25 @@ int keymap_listener(const zmk_event_t *eh) {
 
 #if IS_ENABLED(CONFIG_ZMK_CONFIG)
 void zmk_keymap_updated (struct zmk_config_field *field) {
-    for(int layer = 0; layer < ZMK_KEYMAP_LAYERS_LEN; layer++) {
-        for(int key = 0; key < ZMK_KEYMAP_LEN; key++) {
-            struct zmk_config_keymap_item *item = &zmk_config_keymap[layer][key];
-            //LOG_ERR("Set key layer %i key %i to %i 0x%X", layer, key, item->device, item->param);
-            if(zmk_config_keymap_conf_to_binding(item->device, item->param, &zmk_keymap[layer][key]) < 0) {
-                LOG_ERR("Failed to update layer %i key %i: Unknown device id: %i\n", layer, key, item->device);
-            }
+    
+    for(int key = 0; key < ZMK_CONFIG_MAX_REBOUND_KEYS; key++) {
+        struct zmk_config_keymap_item *item = &zmk_config_keymap[key];
+        uint8_t layer = item->key & 0x0F;
+        uint16_t key = item->key >> 4;
+        if(layer >= ZMK_KEYMAP_LAYERS_LEN || key >= ZMK_KEYMAP_LEN)
+            continue;
+
+        struct zmk_behavior_binding *bind = &zmk_keymap[layer][key];
+        if(zmk_config_keymap_conf_to_binding(bind, item) < 0) {
+            LOG_ERR("Failed to update layer %i key %i: Unknown device id: %i\n", layer, key, item->device);
         }
     }
 }
 
 static int keymap_init () {
-    // Initialize zmk_config keymap
-    for(int layer = 0; layer < ZMK_KEYMAP_LAYERS_LEN; layer++) {
-        for(int key = 0; key < ZMK_KEYMAP_LEN; key++) {
-            struct zmk_behavior_binding *bind = &zmk_keymap[layer][key];
-            struct zmk_config_keymap_item *item = &zmk_config_keymap[layer][key];
-            if(zmk_config_keymap_binding_to_conf(bind, item) < 0) {
-                LOG_ERR("Failed to initialize layer %i key %i: Unknown device name: %s\n", layer, key, bind->behavior_dev);
-            }
-        }
-    }
-
+    // Initialize zmk_config keymap to 0xFF
+    memset(zmk_config_keymap, 0xFF, sizeof(zmk_config_keymap));
+    // Load zmk_config keymap
     if(zmk_config_bind(ZMK_CONFIG_KEY_KEYMAP, zmk_config_keymap, sizeof(zmk_config_keymap), true, zmk_keymap_updated, NULL) == NULL) {
         LOG_ERR("Failed to bind keymap");
     }

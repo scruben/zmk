@@ -1,8 +1,6 @@
 /*
     Manages device configurations in NVS
 */
-#define CONFIG_ZMK_CONFIG
-#ifdef CONFIG_ZMK_CONFIG
 
 #include <zmk/config.h>
 #include <device.h>
@@ -274,45 +272,28 @@ int zmk_config_keymap_device_id (char *device_name) {
 }
 
 
-int zmk_config_keymap_conf_to_binding (uint8_t device, uint32_t param, struct zmk_behavior_binding *binding) {
-    char *device_name = zmk_config_keymap_device_name(device);
+int zmk_config_keymap_conf_to_binding (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item) {
+    char *device_name = zmk_config_keymap_device_name(item->device);
     if(device_name == NULL) {
         return -1;
     }
 
     binding->behavior_dev = device_name;
-
-    // Using MSB of device to determine if parameter is split in to two 16-bit values or single 32-bit
-    if(device & 0x80) {
-        binding->param1 = (int16_t)(param & 0xFFFF);
-        binding->param2 = (int16_t)(param >> 16);
-    }
-    else {
-        binding->param1 = param;
-        binding->param2 = 0;
-    }
+    binding->param1 = item->param1;
+    binding->param2 = item->param2;
 
     return 0;
 }
 
-int zmk_config_keymap_binding_to_conf (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item) {
+int zmk_config_keymap_binding_to_conf (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item, uint8_t layer, uint16_t key) {
     int id = zmk_config_keymap_device_id(binding->behavior_dev);
     if(id < 0) {
         return -1;
     }
-    // Split in to 2 params if param2 is not 0
-    if(binding->param2 != 0) {
-        item->device = (uint8_t)id | 0x80;
-        item->param = ((int16_t)binding->param1) | (((int16_t)binding->param2) << 16);
-    }
-    else {
-        item->device = (uint8_t)id;
-        item->param = binding->param1;
-    }
+    item->device = (uint8_t)id;
+    item->key = (key << 4) | (layer & 0xF);
+    item->param1 = binding->param1;
+    item->param2 = binding->param2;
 
     return 0;
 }
-
-
-
-#endif

@@ -10,6 +10,8 @@
 
 #define ZMK_CONFIG_MAX_FIELD_SIZE       CONFIG_ZMK_CONFIG_MAX_FIELD_SIZE
 #define ZMK_CONFIG_MAX_FIELDS           CONFIG_ZMK_CONFIG_MAX_FIELDS
+// 64 * 11 = 704 bytes 
+#define ZMK_CONFIG_MAX_REBOUND_KEYS     64
 
 /**
  * @brief Configuration keys, casted as uint16_t
@@ -25,8 +27,8 @@ enum zmk_config_key {
     // --------------------------------------------------------------
 
     // 0x0001 - 0x001F: Misc device config fields
-    // Device name for BLE/USB
-    ZMK_CONFIG_KEY_DEVICE_NAME =            0x0001,
+    // Device info (struct zmk_config_device_info)
+    ZMK_CONFIG_KEY_DEVICE_INFO =            0x0001,
 
 
     // 0x0020 - 0x003F: Keyboard configurations 
@@ -90,6 +92,20 @@ struct zmk_config_field {
     void *data;
 };
 
+/**
+ * @brief Device info 
+ */
+struct __attribute__((packed)) zmk_config_device_info {
+    char device_name[32];
+    char manufacturer[32];
+    char product[32];
+    char serial[32];
+
+    uint8_t layer_count;
+    uint8_t row_count;
+    uint8_t key_count;
+};
+
 
 /**
  * @brief Initializes configs and NVS
@@ -141,19 +157,21 @@ int zmk_config_write (enum zmk_config_key key);
 // Move to another file?
 
 struct __attribute__((packed)) zmk_config_keymap_item {
+    uint16_t key;
     uint8_t device;
-    uint32_t param;
+    uint32_t param1;
+    uint32_t param2;
 };
+
 
 /**
  * @brief Transform config keymap item to zmk_behavior_binding. Sets binding
  * 
- * @param device Device ID from config
- * @param param Device parameter. Note: only 1 parameter is saved in config to save memory
  * @param binding This field is altered if corresponding device is found. Should not be NULL!
+ * @param item Config item
  * @return 0 on success, -1 on error
  */
-int zmk_config_keymap_conf_to_binding (uint8_t device, uint32_t param, struct zmk_behavior_binding *binding);
+int zmk_config_keymap_conf_to_binding (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item);
 
 /**
  * @brief Transform zmk_behavior_binding to zmk_config_keymap_item
@@ -162,4 +180,4 @@ int zmk_config_keymap_conf_to_binding (uint8_t device, uint32_t param, struct zm
  * @param item 
  * @return 0 on success, -1 on error
  */
-int zmk_config_keymap_binding_to_conf (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item);
+int zmk_config_keymap_binding_to_conf (struct zmk_behavior_binding *binding, struct zmk_config_keymap_item *item, uint8_t layer, uint16_t key);
