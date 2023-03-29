@@ -216,16 +216,16 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     interface.f_text = dsp_text;
 
     // Create bindings
-    HDL_SetBinding(&interface, "VIEW",          1, &dsp_binds.view);
-    HDL_SetBinding(&interface, "BATT_PERCENT",  2, &dsp_binds.batt_percent);
-    HDL_SetBinding(&interface, "BATT_SPRITE",   3, &dsp_binds.batt_sprite);
-    HDL_SetBinding(&interface, "CHRG",          4, &dsp_binds.charge);
-    HDL_SetBinding(&interface, "TIME",          5, &dsp_binds.conf_time_dsp);
-    HDL_SetBinding(&interface, "DATE",          6, &dsp_binds.conf_date_dsp);
+    HDL_SetBinding(&interface, "VIEW",          1, &dsp_binds.view, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "BATT_PERCENT",  2, &dsp_binds.batt_percent, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "BATT_SPRITE",   3, &dsp_binds.batt_sprite, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "CHRG",          4, &dsp_binds.charge, HDL_TYPE_BOOL);
+    HDL_SetBinding(&interface, "TIME",          5, &dsp_binds.conf_time_dsp, HDL_TYPE_STRING);
+    HDL_SetBinding(&interface, "DATE",          6, &dsp_binds.conf_date_dsp, HDL_TYPE_STRING);
 
 
     // Build page
-    err = HDL_Build(&interface, HDL_PAGE_display_right_hdl, HDL_PAGE_SIZE_display_right_hdl);
+    err = HDL_Build(&interface, HDL_PAGE_display_right_c, HDL_PAGE_SIZE_display_right_c);
     if(err) {
         // Error TODO:
         return;
