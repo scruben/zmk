@@ -9,6 +9,7 @@
 #include <logging/log.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 LOG_MODULE_REGISTER(hdldisp, CONFIG_DISPLAY_LOG_LEVEL);
 
@@ -161,8 +162,8 @@ void dsp_arc(int16_t xc, int16_t yc, int16_t radius, uint16_t start_angle, uint1
     // Iterate through the angles from start_angle to end_angle
     for (angle = start_angle; angle < end_angle; angle += 1) {
 
-        x = xc + radius * cos(angle * PI / 180.0);
-        y = yc + radius * sin(angle * PI / 180.0);
+        x = xc + radius * cosf(angle * PI / 180.0) - 0.5f;
+        y = yc + radius * sinf(angle * PI / 180.0) - 0.5f;
 
         // Plot the point (x, y)
         il0323_set_pixel(display, x, y);
