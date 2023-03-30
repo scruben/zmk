@@ -57,8 +57,8 @@ struct {
 // Refresh clock texts
 void conf_time_refresh () {
     if(conf_time.timestamp == 0) {
-        strcpy(dsp_binds.conf_time_dsp, "--\n--");
-        strcpy(dsp_binds.conf_date_dsp, "XX.XX");
+        strcpy(dsp_binds.conf_time_dsp, "--:--");
+        strcpy(dsp_binds.conf_date_dsp, "XX/XX");
     }
     else {
         uint64_t nclock = k_uptime_get();
@@ -67,8 +67,8 @@ void conf_time_refresh () {
 
         struct tm *_tm = localtime(&tmr);
 
-        sprintf(dsp_binds.conf_time_dsp, "%02i\n%02i", _tm->tm_hour, _tm->tm_min);
-        sprintf(dsp_binds.conf_date_dsp, "%02i.%02i", _tm->tm_mday, _tm->tm_mon + 1);
+        sprintf(dsp_binds.conf_time_dsp, "%02i:%02i", _tm->tm_hour, _tm->tm_min);
+        sprintf(dsp_binds.conf_date_dsp, "%02i/%02i", _tm->tm_mday, _tm->tm_mon + 1);
     }
 }
 
@@ -81,7 +81,7 @@ void conf_time_updated () {
 // Set sleep view
 void display_set_sleep () {
     dsp_binds.view = VIEW_SLEEP;
-    HDL_Update(&interface);
+    HDL_ForceUpdate(&interface);
     il0323_hibernate(display);
 }
 
@@ -152,6 +152,23 @@ void dsp_vline (int16_t x, int16_t y, int16_t len) {
     il0323_v_line(display, x, y, len);
 }
 
+#define PI 3.14159265
+
+void dsp_arc(int16_t xc, int16_t yc, int16_t radius, uint16_t start_angle, uint16_t end_angle) {
+    int x, y;
+    float angle;
+
+    // Iterate through the angles from start_angle to end_angle
+    for (angle = start_angle; angle < end_angle; angle += 1) {
+
+        x = xc + radius * cos(angle * PI / 180.0);
+        y = yc + radius * sin(angle * PI / 180.0);
+
+        // Plot the point (x, y)
+        il0323_set_pixel(display, x, y);
+    }
+}
+
 // Font
 extern const char HDL_FONT[2048];
 
@@ -214,6 +231,7 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     interface.f_hline = dsp_hline;
     interface.f_vline = dsp_vline;
     interface.f_text = dsp_text;
+    interface.f_arc = dsp_arc;
 
     // Create bindings
     HDL_SetBinding(&interface, "VIEW",          1, &dsp_binds.view, HDL_TYPE_I8);
@@ -250,12 +268,12 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
         // Update time
         conf_time_refresh();
 
-        // Update display TODO: Event based!
-        HDL_Update(&interface);
-        il0323_hibernate(display);
+        if(HDL_Update(&interface, k_uptime_get()) > 0) {
+            il0323_hibernate(display);
+        } 
 
-        // Sleep for 30s
-        k_msleep(30000);
+        // Sleep for 1sec
+        k_msleep(1000);
     }
 }
 
