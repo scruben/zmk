@@ -261,6 +261,10 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     interface.textHeight = 6;
     interface.textWidth = 4;
 
+    // Set automatic update intervals
+    // min: 300ms, max: 30s
+    HDL_SetUpdateInterval(&interface, 300, 30000);
+
     while(1) {
 
         // Update battery
