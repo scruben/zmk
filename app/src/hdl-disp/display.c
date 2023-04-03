@@ -308,10 +308,12 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
         // Update time
         conf_time_refresh();
 
+        #ifdef CONFIG_ZMK_CONFIG
         struct zmk_config_field *sens = zmk_config_get(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY);
         if(sens) {
             dsp_binds.sensitivity = *(uint8_t*)sens->data;
         }
+        #endif
 
         if(HDL_Update(&interface, k_uptime_get()) > 0) {
             il0323_hibernate(display);
