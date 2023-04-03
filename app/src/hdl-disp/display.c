@@ -88,7 +88,7 @@ void conf_time_refresh () {
         dsp_binds.hours = _tm->tm_hour;
         dsp_binds.minutes = _tm->tm_min;
         dsp_binds.year = _tm->tm_year + 1900;
-        dsp_binds.month = _tm->tm_mon;
+        dsp_binds.month = _tm->tm_mon + 1;
         dsp_binds.day = _tm->tm_mday;
         dsp_binds.weekDay = _tm->tm_wday;
         dsp_binds.hasTime = 1;
