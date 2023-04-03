@@ -11,6 +11,17 @@
 #include <time.h>
 #include <math.h>
 
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+// Central
+#include <zmk/split/bluetooth/central.h>
+
+#elif IS_ENABLED(CONFIG_ZMK_SPLIT)
+// Peripheral
+#include <zmk/split/bluetooth/peripheral.h>
+#endif
+#include <zmk/keymap.h>
+#include <zmk/ble.h>
+
 LOG_MODULE_REGISTER(hdldisp, CONFIG_DISPLAY_LOG_LEVEL);
 
 // Display device
@@ -52,6 +63,10 @@ struct {
     int8_t rssi;
 
     uint16_t sensitivity;
+
+    uint8_t layer;
+    uint8_t btProfile;
+    uint8_t splitConnected;
     
     // Time and date
     uint8_t hasTime;
@@ -233,6 +248,38 @@ void dsp_text (int16_t x, int16_t y, const char *text, uint8_t fontSize) {
     }
 }
 
+static void update_display_bindings () {
+    // Update battery
+    dsp_binds.batt_percent = zmk_battery_state_of_charge();
+    update_battery_sprite();
+    // Update time
+    conf_time_refresh();
+
+    #ifdef CONFIG_ZMK_CONFIG
+    struct zmk_config_field *sens = zmk_config_get(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY);
+    if(sens) {
+        dsp_binds.sensitivity = *(uint8_t*)sens->data;
+    }
+    #endif
+
+
+
+    #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    // Central
+    dsp_binds.splitConnected = zmk_split_bt_central_is_connected();
+
+    #elif IS_ENABLED(CONFIG_ZMK_SPLIT)
+    // Peripheral
+    dsp_binds.splitConnected = zmk_split_bt_peripheral_is_connected();
+    
+    #endif
+
+    dsp_binds.layer = zmk_keymap_highest_layer_active();
+    dsp_binds.btProfile = zmk_ble_active_profile_index();
+
+    
+}
+
 static void display_thread(void *arg, void *unused2, void *unused3) {
     k_msleep(100);
     while(display == NULL) {
@@ -265,6 +312,10 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
 
     HDL_SetBinding(&interface, "SENSITIVITY",   6, &dsp_binds.sensitivity, HDL_TYPE_I16);
 
+    HDL_SetBinding(&interface, "LAYER",         7, &dsp_binds.layer, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "BTPROFILE",     8, &dsp_binds.btProfile, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "SPLITCONNECTED", 9, &dsp_binds.splitConnected, HDL_TYPE_BOOL);
+
     // Time and date
     HDL_SetBinding(&interface, "HASTIME",       20, &dsp_binds.hasTime, HDL_TYPE_BOOL);
     HDL_SetBinding(&interface, "HOURS",         21, &dsp_binds.hours, HDL_TYPE_I8);
@@ -274,9 +325,6 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     HDL_SetBinding(&interface, "MONTH",         24, &dsp_binds.month, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "DAY",           25, &dsp_binds.day, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "WEEKDAY",       26, &dsp_binds.weekDay, HDL_TYPE_I8);
-
-
-
 
     // Build page
     err = HDL_Build(&interface, HDL_PAGE_display_right_c, HDL_PAGE_SIZE_display_right_c);
@@ -302,18 +350,7 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
 
     while(1) {
 
-        // Update battery
-        dsp_binds.batt_percent = zmk_battery_state_of_charge();
-        update_battery_sprite();
-        // Update time
-        conf_time_refresh();
-
-        #ifdef CONFIG_ZMK_CONFIG
-        struct zmk_config_field *sens = zmk_config_get(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY);
-        if(sens) {
-            dsp_binds.sensitivity = *(uint8_t*)sens->data;
-        }
-        #endif
+        update_display_bindings();
 
         if(HDL_Update(&interface, k_uptime_get()) > 0) {
             il0323_hibernate(display);
