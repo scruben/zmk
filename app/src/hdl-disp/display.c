@@ -38,6 +38,8 @@ uint8_t HDL_DATA[HDL_DATA_MAX_SIZE];
 uint16_t HDL_DATA_LEN = 0;
 // HDL initialized
 uint8_t hdl_initialized = 0;
+// HDL build mutex
+K_MUTEX_DEFINE(hdl_mutex);
 
 enum dsp_view {
     VIEW_MAIN,
@@ -126,6 +128,9 @@ void conf_time_updated () {
 
 // Display received via zmk_control callback
 void conf_display_updated () {
+
+    k_mutex_lock(&hdl_mutex, K_FOREVER);
+
     struct HDL_Header *hdr = (struct HDL_Header*)HDL_DATA;
 
     // Get file size from HDL file
@@ -145,7 +150,10 @@ void conf_display_updated () {
 
     if(hdl_initialized) {
         HDL_ForceUpdate(&interface);
+        il0323_hibernate(display);
     }
+
+    k_mutex_unlock(&hdl_mutex);
 
 }
 
@@ -385,9 +393,13 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
 
         update_display_bindings();
 
+        k_mutex_lock(&hdl_mutex, K_FOREVER);
+
         if(HDL_Update(&interface, k_uptime_get()) > 0) {
             il0323_hibernate(display);
-        } 
+        }
+
+        k_mutex_unlock(&hdl_mutex);
 
         // Sleep for 1sec
         k_msleep(1000);
