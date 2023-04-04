@@ -263,10 +263,10 @@ void dsp_text (int16_t x, int16_t y, const char *text, uint8_t fontSize) {
 		}
 		
 		for (int py = 0; py < 8; py++) {
-			for (int px = 0; px < 5; px++) {
+			for (int px = 0; px < 6; px++) {
 				if ((HDL_FONT[text[g] * 8 + py] >> (7 - px)) & 1) {
-                    int rx = x + (px + acol * 5) * fontSize;
-                    int ry = y + (py + line * 6) * fontSize;
+                    int rx = x + (px + acol * 6) * fontSize;
+                    int ry = y + (py + line * 8) * fontSize;
 
                     for(int sy = 0; sy < fontSize; sy++) {
                         for(int sx = 0; sx < fontSize; sx++) {
@@ -370,7 +370,7 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
 
     // Set text width and height, used to center text
     interface.textHeight = 6;
-    interface.textWidth = 4;
+    interface.textWidth = 5;
 
     // Set automatic update intervals
     // min: 300ms, max: 30s
