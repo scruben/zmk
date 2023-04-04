@@ -24,12 +24,20 @@
 
 LOG_MODULE_REGISTER(hdldisp, CONFIG_DISPLAY_LOG_LEVEL);
 
+#define HDL_DATA_MAX_SIZE    1024
+
 // Display device
 static const struct device *display;
 // Interface object
 struct HDL_Interface interface;
 // Default font
 extern const char HDL_FONT[2048];
+// HDL data
+uint8_t HDL_DATA[HDL_DATA_MAX_SIZE];
+// HDL data length
+uint16_t HDL_DATA_LEN = 0;
+// HDL initialized
+uint8_t hdl_initialized = 0;
 
 enum dsp_view {
     VIEW_MAIN,
@@ -114,6 +122,31 @@ void conf_time_refresh () {
 void conf_time_updated () {
     _conf_time_last_update = k_uptime_get();
     conf_time_refresh();
+}
+
+// Display received via zmk_control callback
+void conf_display_updated () {
+    struct HDL_Header *hdr = (struct HDL_Header*)HDL_DATA;
+
+    // Get file size from HDL file
+    HDL_DATA_LEN = hdr->fileSize;
+
+    if(HDL_DATA_LEN == 0) {
+        // Set default data
+        memcpy(HDL_DATA, HDL_PAGE_display_right_c, HDL_PAGE_SIZE_display_right_c);
+        HDL_DATA_LEN = HDL_PAGE_SIZE_display_right_c;
+    }
+    
+    
+    // Free earlier interface
+    HDL_Free(&interface);
+
+    HDL_Build(&interface, HDL_DATA, HDL_DATA_LEN);
+
+    if(hdl_initialized) {
+        HDL_ForceUpdate(&interface);
+    }
+
 }
 
 // Set sleep view
@@ -274,8 +307,10 @@ static void update_display_bindings () {
     
     #endif
 
+    #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
     dsp_binds.layer = zmk_keymap_highest_layer_active();
     dsp_binds.btProfile = zmk_ble_active_profile_index();
+    #endif
 
     
 }
@@ -326,13 +361,6 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     HDL_SetBinding(&interface, "DAY",           25, &dsp_binds.day, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "WEEKDAY",       26, &dsp_binds.weekDay, HDL_TYPE_I8);
 
-    // Build page
-    err = HDL_Build(&interface, HDL_PAGE_display_right_c, HDL_PAGE_SIZE_display_right_c);
-    if(err) {
-        // Error TODO:
-        return;
-    }
-
     // Add preloaded images
     // Preloaded images' id's must have the MSb as 1 (>0x8000)
     // Normal icons
@@ -347,6 +375,11 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     // Set automatic update intervals
     // min: 300ms, max: 30s
     HDL_SetUpdateInterval(&interface, 300, 30000);
+
+    // Load data and build
+    conf_display_updated();
+
+    hdl_initialized = 1;
 
     while(1) {
 
@@ -365,11 +398,17 @@ static int display_init () {
 
     display = DEVICE_DT_GET_ANY(gooddisplay_il0323n);
 
+    memset(HDL_DATA, 0, sizeof(HDL_DATA));
+
     // Bind timestamp
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+#if IS_ENABLED(CONFIG_ZMK_CONFIG)
     if(zmk_config_bind(ZMK_CONFIG_KEY_DATETIME, &conf_time, sizeof(conf_time), false, conf_time_updated, display) == NULL) {
         LOG_ERR("Failed to bind timestamp");
     }
+    if(zmk_config_bind(ZMK_CONFIG_KEY_DISPLAY_CODE, HDL_DATA, sizeof(HDL_DATA), true, conf_display_updated, display) == NULL) {
+        LOG_ERR("Failed to bind display");
+    }
+
 #endif
     if (display == NULL) {
         LOG_ERR("Failed to get il0323n device");
