@@ -30,6 +30,8 @@ static uint8_t _tmp_buffer[ZMK_CONFIG_MAX_FIELD_SIZE];
 // List of read configs
 static struct zmk_config_field fields[ZMK_CONFIG_MAX_FIELDS];
 
+struct zmk_config_device_info device_info;
+
 int zmk_config_init () {
     // No need to initialize multiple times
     if(_config_initialized)
@@ -38,6 +40,7 @@ int zmk_config_init () {
     const struct device *flash_dev;
 
     memset(fields, 0, sizeof(struct zmk_config_field) * ZMK_CONFIG_MAX_FIELDS);
+    memset(&device_info, 0, sizeof(struct zmk_config_device_info));
 
     int err = 0;
 
@@ -66,6 +69,11 @@ int zmk_config_init () {
 	}
     // Set initialized flag
     _config_initialized = 1;
+
+    // Bind device info
+    if(zmk_config_bind(ZMK_CONFIG_KEY_DEVICE_INFO, &device_info, sizeof(device_info), 1, NULL, NULL) == NULL) {
+        LOG_ERR("Failed to bind device info");
+    }
 
     return 0;
 }
