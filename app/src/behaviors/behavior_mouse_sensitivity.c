@@ -17,27 +17,23 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)
 
-static struct k_sem config_saver_sem;
+K_SEM_DEFINE(config_saver_sem, 0, 1);
 
-static int behavior_mouse_sensitivity_init(const struct device *dev) { 
-    k_sem_init(&config_saver_sem, 0, UINT32_MAX);
+static int behavior_mouse_sensitivity_init(const struct device *dev) { return 0; }
 
-    return 0; 
-}
-
-static void save_mouse_sensitivity_thread (int unused1, int unused2, int unused3) {
-
+static void save_mouse_sensitivity_thread (void* unused1, void* unused2, void* unused3) {
     while(1) {
         k_sem_take(&config_saver_sem, K_FOREVER);
 
         if(zmk_config_write(ZMK_CONFIG_KEY_MOUSE_SENSITIVITY) != 0) {
             LOG_ERR("Failed to write mouse sensitivity!");
         }
+        k_msleep(1000);
     }
 }
 
-
-K_THREAD_DEFINE(t_save_mouse_sens, 128, save_mouse_sensitivity_thread, NULL, NULL, NULL, K_PRIO_PREEMPT(10), 0, 0);
+// 512 stack size crashes?
+K_THREAD_DEFINE(t_save_mouse_sens, 1024, save_mouse_sensitivity_thread, NULL, NULL, NULL, K_PRIO_PREEMPT(10), 0, 0);
 
 static void save_mouse_sensitivity_func () {
     // Write config
