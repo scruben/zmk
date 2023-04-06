@@ -142,17 +142,16 @@ int zmk_config_read (enum zmk_config_key key) {
         return -1;
 
     // Only allow saveable fields to be read
-    if(field->flags & ZMK_CONFIG_FIELD_FLAG_SAVEABLE == 0)
+    if((field->flags & ZMK_CONFIG_FIELD_FLAG_SAVEABLE) == 0)
         return -1;
     
     // Update field from NVS
+    k_mutex_lock(&field->mutex, K_FOREVER);
     len = nvs_read(&fs, (uint16_t)key, _tmp_buffer, ZMK_CONFIG_MAX_FIELD_SIZE);
 
     if(len > 0) {
         // Read OK
 
-        // Lock
-        k_mutex_lock(&field->mutex, K_FOREVER);
         // Check field size
         if(field->size == len) {
             // Field size ok, copy new value
@@ -173,6 +172,7 @@ int zmk_config_read (enum zmk_config_key key) {
     }
     else {
         field->flags &= ~(ZMK_CONFIG_FIELD_FLAG_READ);
+        k_mutex_unlock(&field->mutex);
         return -1;
     }
 
@@ -192,7 +192,7 @@ int zmk_config_write (enum zmk_config_key key) {
         return -1;
 
     // Only allow saveable fields to be written
-    if(field->flags & ZMK_CONFIG_FIELD_FLAG_SAVEABLE == 0)
+    if((field->flags & ZMK_CONFIG_FIELD_FLAG_SAVEABLE) == 0)
         return -1;
 
     k_mutex_lock(&field->mutex, K_FOREVER);
