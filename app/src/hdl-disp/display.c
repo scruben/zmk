@@ -22,6 +22,11 @@
 #include <zmk/keymap.h>
 #include <zmk/ble.h>
 
+#include <zmk/events/wpm_state_changed.h>
+#include <zmk/wpm.h>
+#include <zmk/endpoints.h>
+
+
 LOG_MODULE_REGISTER(hdldisp, CONFIG_DISPLAY_LOG_LEVEL);
 
 #define HDL_DATA_MAX_SIZE    1024
@@ -77,6 +82,9 @@ struct {
     uint8_t layer;
     uint8_t btProfile;
     uint8_t splitConnected;
+    uint8_t wpm;
+    uint8_t connectionStatus;
+    uint8_t hostDisconnected;
     
     // Time and date
     uint8_t hasTime;
@@ -303,7 +311,9 @@ static void update_display_bindings () {
     }
     #endif
 
-
+    #ifdef CONFIG_ZMK_WPM
+    dsp_binds.wpm = zmk_wpm_get_state();
+    #endif
 
     #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     // Central
@@ -312,12 +322,30 @@ static void update_display_bindings () {
     #elif IS_ENABLED(CONFIG_ZMK_SPLIT)
     // Peripheral
     dsp_binds.splitConnected = zmk_split_bt_peripheral_is_connected();
-    
     #endif
+
 
     #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
     dsp_binds.layer = zmk_keymap_highest_layer_active();
     dsp_binds.btProfile = zmk_ble_active_profile_index();
+    //
+    if(zmk_endpoints_selected() == 0) {
+        //usb ok
+        dsp_binds.hostDisconnected = 0;
+        dsp_binds.connectionStatus = zmk_endpoints_selected()+1;
+    } else if (!zmk_ble_active_profile_is_connected()) {
+        //not connected
+        dsp_binds.hostDisconnected = 1;
+        dsp_binds.connectionStatus = 0;
+    } else if (!zmk_ble_active_profile_is_open()) {
+        //is connected via bt
+        dsp_binds.hostDisconnected = 0;
+        dsp_binds.connectionStatus= 2;
+    } else {
+        //unknown situation
+        dsp_binds.hostDisconnected = 1;
+        dsp_binds.connectionStatus = 0;
+    }
     #endif
 
     
@@ -358,6 +386,9 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     HDL_SetBinding(&interface, "LAYER",         7, &dsp_binds.layer, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "BTPROFILE",     8, &dsp_binds.btProfile, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "SPLITCONNECTED", 9, &dsp_binds.splitConnected, HDL_TYPE_BOOL);
+    HDL_SetBinding(&interface, "WPM",   10,    &dsp_binds.wpm, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "CONNECTION_STATUS", 11, &dsp_binds.connectionStatus, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "HOST_DISCONNECTED", 12, &dsp_binds.hostDisconnected, HDL_TYPE_BOOL);
 
     // Time and date
     HDL_SetBinding(&interface, "HASTIME",       20, &dsp_binds.hasTime, HDL_TYPE_BOOL);
