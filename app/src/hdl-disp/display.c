@@ -82,7 +82,7 @@ struct {
     uint8_t layer;
     uint8_t btProfile;
     uint8_t splitConnected;
-    uint8_t wpm;
+    uint16_t wpm;
     uint8_t connectionStatus;
     uint8_t hostDisconnected;
     
@@ -386,7 +386,7 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
     HDL_SetBinding(&interface, "LAYER",         7, &dsp_binds.layer, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "BTPROFILE",     8, &dsp_binds.btProfile, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "SPLITCONNECTED", 9, &dsp_binds.splitConnected, HDL_TYPE_BOOL);
-    HDL_SetBinding(&interface, "WPM",   10,    &dsp_binds.wpm, HDL_TYPE_I8);
+    HDL_SetBinding(&interface, "WPM",   10,    &dsp_binds.wpm, HDL_TYPE_I16);
     HDL_SetBinding(&interface, "CONNECTION_STATUS", 11, &dsp_binds.connectionStatus, HDL_TYPE_I8);
     HDL_SetBinding(&interface, "HOST_DISCONNECTED", 12, &dsp_binds.hostDisconnected, HDL_TYPE_BOOL);
 
