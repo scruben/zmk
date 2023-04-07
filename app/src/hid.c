@@ -334,15 +334,15 @@ void zmk_hid_mouse_movement_update(int16_t x, int16_t y) {
 void zmk_hid_mouse_scroll_set(int8_t x, int8_t y) {
     mouse_report.body.scroll_x = x;
     mouse_report.body.scroll_y = y;
-    LOG_DBG("Mouse scroll set to 0x%02X 0x%02X ", mouse_report.body.scroll_x,
-            mouse_report.body.scroll_y);
+    //LOG_DBG("Mouse scroll set to 0x%02X 0x%02X ", mouse_report.body.scroll_x,
+    //        mouse_report.body.scroll_y);
 }
 
 void zmk_hid_mouse_scroll_update(int8_t x, int8_t y) {
     mouse_report.body.scroll_x += x;
     mouse_report.body.scroll_y += y;
-    LOG_DBG("Mouse scroll updated to 0x%02X 0x%02X ", mouse_report.body.scroll_x,
-            mouse_report.body.scroll_y);
+    //LOG_DBG("Mouse scroll updated to 0x%02X 0x%02X ", mouse_report.body.scroll_x,
+    //        mouse_report.body.scroll_y);
 }
 void zmk_hid_mouse_clear() { memset(&mouse_report.body, 0, sizeof(mouse_report.body)); }
 
