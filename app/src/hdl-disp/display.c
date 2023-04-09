@@ -146,8 +146,13 @@ void conf_display_updated () {
 
     if(HDL_DATA_LEN == 0) {
         // Set default data
+        #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL) || !IS_ENABLED(CONFIG_ZMK_SPLIT)
         memcpy(HDL_DATA, HDL_PAGE_display_right_c, HDL_PAGE_SIZE_display_right_c);
         HDL_DATA_LEN = HDL_PAGE_SIZE_display_right_c;
+        #elif IS_ENABLED(CONFIG_ZMK_SPLIT)
+        memcpy(HDL_DATA, HDL_PAGE_display_left_c, HDL_PAGE_SIZE_display_left_c);
+        HDL_DATA_LEN = HDL_PAGE_SIZE_display_left_c;
+        #endif
     }
     
     
@@ -423,9 +428,8 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
 
     while(1) {
 
-        update_display_bindings();
-
         k_mutex_lock(&hdl_mutex, K_FOREVER);
+        update_display_bindings();
 
         if(HDL_Update(&interface, k_uptime_get()) > 0) {
             il0323_hibernate(display);
