@@ -276,6 +276,7 @@ void dsp_text (int16_t x, int16_t y, const char *text, uint8_t fontSize) {
 		}
 		else if (text[g] == ' ') {
 			acol++;
+            continue;
 		}
 		
 		for (int py = 0; py < 8; py++) {
