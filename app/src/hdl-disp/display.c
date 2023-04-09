@@ -96,7 +96,7 @@ struct {
     uint8_t month;
     uint8_t day;
     
-    // 0 = monday
+    // 0 = sunday
     uint8_t weekDay;
 
 } dsp_binds;
