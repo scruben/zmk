@@ -428,6 +428,7 @@ static void display_thread(void *arg, void *unused2, void *unused3) {
 
     while(1) {
 
+        update_display_bindings();
         k_mutex_lock(&hdl_mutex, K_FOREVER);
         update_display_bindings();
 

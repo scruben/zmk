@@ -73,7 +73,6 @@ void activity_work_handler(struct k_work *work) {
         #if IS_ENABLED(CONFIG_ZEPHYR_HDL)
         display_set_sleep();
         #endif
-        k_msleep(10);
         // Put devices in suspend power mode before sleeping
         set_state(ZMK_ACTIVITY_SLEEP);
         pm_power_state_force(0U, (struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
