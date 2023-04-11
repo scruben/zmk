@@ -52,7 +52,7 @@
 &kp LCTRL   &kp LGUI        &kp LALT    &td1    &kp BSPC 	&kp SPACE 	&kp RET         &kp SPACE       			&kp RALT    							&kp RGUI    &kp K_APP   &kp RCTRL 			&mo 2                                	
 			>;
 
-			sensor-bindings = <&inc_dec_kp C_VOL_DN C_VOL_UP &inc_dec_kp DOWN_ARROW UP_ARROW>;
+			sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN &inc_dec_kp DOWN_ARROW UP_ARROW>;
 		};
 
 		arrow_layer {
