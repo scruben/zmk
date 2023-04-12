@@ -132,9 +132,7 @@ int zmk_control_get_config (uint8_t *buffer, uint16_t len) {
                     // break or retry ???
                     break;
                 }
-                
-                //LOG_ERR("Send report %i/%i", total, hdr->size);
-                k_msleep(10);
+                k_msleep(1);
                 total += hdr->chunk_size;
             }
             k_free(_zmk_control_input_buffer);
