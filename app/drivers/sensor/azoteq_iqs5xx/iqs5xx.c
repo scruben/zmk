@@ -226,6 +226,16 @@ int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_con
         k_msleep(1);
     }
 
+    uint8_t buf = RESET_TP;
+    // Reset device
+    iqs5xx_write(dev, SystemControl1_adr, &buf, 1);
+    iqs5xx_write(dev, END_WINDOW, 0, 1);
+    k_msleep(1);
+
+    while(!gpio_pin_get(conf->dr_port, conf->dr_pin)) {
+        k_msleep(1);
+    }
+
     int err = 0;
 
     // 16 or 32 bit values must be swapped to big endian
