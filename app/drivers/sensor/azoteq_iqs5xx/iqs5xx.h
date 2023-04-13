@@ -420,3 +420,11 @@ int iqs5xx_trigger_set(const struct device *dev, iqs5xx_trigger_handler_t handle
 #define	ZoomConsDistance_adr	0x06CD	//(READ/WRITE/E2)	//2 BYTES; 
 
 
+// Register dumping
+
+// Start dump from 04D5 
+#define IQS5XX_REG_DUMP_START_ADDRESS   0x04D5
+// Write 504 bytes
+#define IQS5XX_REG_DUMP_SIZE            504
+// Dump data
+extern const unsigned char _iqs5xx_regdump[IQS5XX_REG_DUMP_SIZE];

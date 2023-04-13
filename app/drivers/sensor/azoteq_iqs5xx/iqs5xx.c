@@ -16,8 +16,11 @@
 #include <devicetree.h>
 #include "iqs5xx.h"
 
+
 // DT_DRV_INST(0);
 LOG_MODULE_REGISTER(azoteq_iqs5xx, CONFIG_ZMK_LOG_LEVEL);
+
+static int iqs_regdump_err = 0;
 
 // Default config
 struct iqs5xx_reg_config iqs5xx_reg_config_default () {
@@ -90,6 +93,11 @@ static int iqs5xx_write(const struct device *dev, const uint16_t start_addr, uin
 
     int err = i2c_transfer(data->i2c, msg, 2, AZOTEQ_IQS5XX_ADDR);
     return err;
+}
+
+static int iqs5xx_reg_dump (const struct device *dev) {
+
+    return iqs5xx_write(dev, IQS5XX_REG_DUMP_START_ADDRESS, _iqs5xx_regdump, IQS5XX_REG_DUMP_SIZE);
 }
 
 static int iqs5xx_attr_set(const struct device *dev, enum sensor_channel chan,
@@ -233,7 +241,14 @@ int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_con
     k_msleep(1);
 
     while(!gpio_pin_get(conf->dr_port, conf->dr_pin)) {
-        k_msleep(1);
+        k_usleep(200);
+    }
+
+    // Write register dump
+    iqs_regdump_err = iqs5xx_reg_dump(dev);
+
+    while(!gpio_pin_get(conf->dr_port, conf->dr_pin)) {
+        k_usleep(200);
     }
 
     int err = 0;
