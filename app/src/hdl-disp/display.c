@@ -172,7 +172,10 @@ void conf_display_updated () {
 
 // Set sleep view
 void display_set_sleep () {
+    // Lock the mutex forever since we are going to sleep
+    k_mutex_lock(&hdl_mutex, K_FOREVER);
     dsp_binds.view = VIEW_SLEEP;
+    // This will be the last render until reboot
     HDL_ForceUpdate(&interface);
     il0323_hibernate(display);
 }
