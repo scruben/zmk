@@ -104,5 +104,5 @@
 // add (){}[] to more accessible places
 // numbers, symbols, del/supr in home row
 // on layer mouse movement converts in to scrolling/arrow
-// improve rot switches usage... maybe for moving between windows, undo-redo, wheel scrolling
+// improve rot switches usage... maybe for moving between windows, undo-redo, wheel scrolling, right button
 // adjust sensibility of trackpad depending on layers
