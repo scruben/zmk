@@ -82,7 +82,7 @@
 		lower_layer {
 			bindings = <
 &kp ESC         &kp F1              &kp  F2     	&kp  F3  		&kp  F4  		&kp  F5  		&kp  F6      	                                            &kp  F7  		&kp  F8     &kp  F9         &kp  F10        &kp F11         &kp F12     &kp DELETE    
-&trans  	    &kp LS(HOME)        &trans          &trans   	    &kp LS(LBKT) 	&kp LS(RBKT)           		                                                &kp LS(LEFT)  	&kp LS(DOWN) &KP LS(UP)     &kp LS(RIGHT)   &kp LS(END)     &kp PG_UP   &trans      		&kp INSERT 
+&trans  	    &kp LS(HOME)        &trans          &trans   	    &kp LS(LBKT) 	&kp LS(RBKT)           		                                                &kp LS(LEFT)  	&kp LS(DOWN) &kp LS(UP)     &kp LS(RIGHT)   &kp LS(END)     &kp PG_UP   &trans      		&kp INSERT 
 &trans          &kp HOME            &trans      	&kp DELETE 		&kp LS(N9) 		&kp LS(N0)                      &trans      	                            &kp LEFT   		&kp DOWN    &kp UP          &kp RIGHT       &kp END         &kp PG_DN 	&kp PRINTSCREEN
 &kp CAPSLOCK    &trans              &trans      	&trans          &trans         	&kp LBKT   		&kp RBKT                        &kp C_MUTE     	&trans      &trans          &trans      &trans          &trans		    &kp UP        			    &trans     
 &trans          &trans              &trans          &trans   		&kp DELETE 		&kp TAB 	    &kp INSERT    	                                            &trans         			    &trans      	&kp LEFT        &kp DOWN  	    &kp RIGHT                       &trans
