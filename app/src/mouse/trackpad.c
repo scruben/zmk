@@ -191,7 +191,7 @@ static void trackpad_trigger_handler(const struct device *dev, const struct iqs5
                 // Report scroll only if a certain distance has been travelled
                 int8_t scroll = 0;
                 if(abs(lastXScrollReport) - (int16_t)SCROLL_REPORT_DISTANCE > 0) {
-                    scroll = lastXScrollReport >= 0 ? 1 : -1;
+                    scroll = lastXScrollReport >= 0 ? -1 : 1;
                     lastXScrollReport = 0;
                 }
                 zmk_hid_mouse_scroll_set(pan, scroll);
