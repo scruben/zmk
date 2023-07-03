@@ -14,6 +14,7 @@
 #include <drivers/i2c.h>
 #include <sys/util.h>
 #include <drivers/gpio.h>
+#include <sys/mutex.h>
 
 // Single finger data
 struct iqs5xx_finger {
@@ -62,6 +63,8 @@ struct iqs5xx_data {
     struct iqs5xx_rawdata raw_data;
     // GPIO semaphore
     struct k_sem gpio_sem;
+    // i2c mutex
+    struct k_mutex i2c_mutex;
 };
 
 struct iqs5xx_config {

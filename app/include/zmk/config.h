@@ -65,13 +65,13 @@ enum zmk_config_key {
 
 
     // --------------------------------------------------------------
-    // 0x8000 - 0xFFFF: Custom fields
+    // 0x6000 - 0x8000: Custom fields
     // Fields that should be used if custom fields are needed
     // --------------------------------------------------------------
     
     // hid:ergo device specific fields
     // IQS5XX register configuration
-    ZMK_CONFIG_CUSTOM_IQS5XX_REGS =         0x8001,
+    ZMK_CONFIG_CUSTOM_IQS5XX_REGS =         0x6001,
 
 };
 

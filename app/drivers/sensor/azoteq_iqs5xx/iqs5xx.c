@@ -112,6 +112,9 @@ static int iqs5xx_attr_set(const struct device *dev, enum sensor_channel chan,
 */
 static int iqs5xx_sample_fetch (const struct device *dev) {
     uint8_t buffer[44];
+
+    struct iqs5xx_data *data = dev->data;
+
     int res = iqs5xx_seq_read(dev, GestureEvents0_adr, buffer, 44);
 	iqs5xx_write(dev, END_WINDOW, 0, 1);
     if (res < 0) {
@@ -119,7 +122,6 @@ static int iqs5xx_sample_fetch (const struct device *dev) {
         return res;
     }
 
-    struct iqs5xx_data *data = dev->data;
     
     // Gestures
     data->raw_data.gestures0 =      buffer[0];
@@ -187,11 +189,13 @@ static void iqs5xx_thread(void *arg, void *unused2, void *unused3) {
         #elif CONFIG_IQS5XX_INTERRUPT
             k_sem_take(&data->gpio_sem, K_FOREVER);
             
+            k_mutex_lock(&data->i2c_mutex, K_MSEC(1000));
             iqs5xx_sample_fetch(dev);
             // Trigger 
             if(data->data_ready_handler != NULL) {
                 data->data_ready_handler(dev, &data->raw_data);
             }
+            k_mutex_unlock(&data->i2c_mutex);
 
         #endif
     }
@@ -227,18 +231,21 @@ static void iqs5xx_callback(const struct device *dev, struct gpio_callback *cb, 
  */
 int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_config *config) {
     // TODO: Retry if error on write
-
+    struct iqs5xx_data *data = dev->data;
     struct iqs5xx_config *conf = dev->config;
+
+    k_mutex_lock(&data->i2c_mutex, K_MSEC(5000));
+    
     // Wait for dataready?
     while(!gpio_pin_get(conf->dr_port, conf->dr_pin)) {
-        k_msleep(1);
+        k_usleep(200);
     }
 
     uint8_t buf = RESET_TP;
     // Reset device
     iqs5xx_write(dev, SystemControl1_adr, &buf, 1);
     iqs5xx_write(dev, END_WINDOW, 0, 1);
-    k_msleep(1);
+    k_msleep(10);
 
     while(!gpio_pin_get(conf->dr_port, conf->dr_pin)) {
         k_usleep(200);
@@ -246,6 +253,7 @@ int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_con
 
     // Write register dump
     iqs_regdump_err = iqs5xx_reg_dump(dev);
+    LOG_ERR("regdump: %i", iqs_regdump_err);
 
     while(!gpio_pin_get(conf->dr_port, conf->dr_pin)) {
         k_usleep(200);
@@ -259,50 +267,84 @@ int iqs5xx_registers_init (const struct device *dev, const struct iqs5xx_reg_con
     // Set active refresh rate
     *((uint16_t*)wbuff) = SWPEND16(config->activeRefreshRate);
     err |= iqs5xx_write(dev, ActiveRR_adr, wbuff, 2);
+    LOG_ERR("ActiveRR_adr: %i", err);
+
     // Set idle refresh rate
     *((uint16_t*)wbuff) = SWPEND16(config->idleRefreshRate);
     err |= iqs5xx_write(dev, IdleRR_adr, wbuff, 2);
+    LOG_ERR("IdleRR_adr: %i", err);
+
 
     // Set single finger gestures
     err |= iqs5xx_write(dev, SFGestureEnable_adr, &config->singleFingerGestureMask, 1);
+    LOG_ERR("SFGestureEnable_adr: %i", err);
+
     // Set multi finger gestures
     err |= iqs5xx_write(dev, MFGestureEnable_adr, &config->multiFingerGestureMask, 1);
+    LOG_ERR("MFGestureEnable_adr: %i", err);
+
 
     // Set tap time
     *((uint16_t*)wbuff) = SWPEND16(config->tapTime);
     err |= iqs5xx_write(dev, TapTime_adr, wbuff, 2);
+    LOG_ERR("TapTime_adr: %i", err);
+
 
     // Set tap distance
     *((uint16_t*)wbuff) = SWPEND16(config->tapDistance);
     err |= iqs5xx_write(dev, TapDistance_adr, wbuff, 2);
+    LOG_ERR("TapDistance_adr: %i", err);
+
 
     // Set touch multiplier
     err |= iqs5xx_write(dev, GlobalTouchSet_adr, &config->touchMultiplier, 1);
+    LOG_ERR("GlobalTouchSet_adr: %i", err);
+
 
     // Set debounce settings
     err |= iqs5xx_write(dev, ProxDb_adr, &config->debounce, 1);
-    err |= iqs5xx_write(dev, TouchSnapDb_adr, &config->debounce, 1);
+    LOG_ERR("ProxDb_adr: %i", err);
 
+    err |= iqs5xx_write(dev, TouchSnapDb_adr, &config->debounce, 1);
+    LOG_ERR("TouchSnapDb_adr: %i", err);
+
+
+    //wbuff[0] = ND_ENABLE;
+    wbuff[0] = 0;
     // Set noise reduction
-    err |= iqs5xx_write(dev, ND_ENABLE, 1, 1);
+    err |= iqs5xx_write(dev, HardwareSettingsA_adr, wbuff, 1);
+    LOG_ERR("HardwareSettingsA_adr: %i", err);
+
 
     // Set i2c timeout
     err |= iqs5xx_write(dev, I2CTimeout_adr, &config->i2cTimeout, 1);
+    LOG_ERR("I2CTimeout_adr: %i", err);
+
 
     // Set filter settings
     err |= iqs5xx_write(dev, FilterSettings0_adr, &config->filterSettings, 1);
+    LOG_ERR("FilterSettings0_adr: %i", err);
+
     err |= iqs5xx_write(dev, DynamicBottomBeta_adr, &config->filterDynBottomBeta, 1);
+    LOG_ERR("DynamicBottomBeta_adr: %i", err);
+
     err |= iqs5xx_write(dev, DynamicLowerSpeed_adr, &config->filterDynLowerSpeed, 1);
+    LOG_ERR("DynamicLowerSpeed_adr: %i", err);
+
     *((uint16_t*)wbuff) = SWPEND16(config->filterDynUpperSpeed);
     err |= iqs5xx_write(dev, DynamicUpperSpeed_adr, wbuff, 2);
+    LOG_ERR("DynamicUpperSpeed_adr: %i", err);
+
 
     // Set initial scroll distance
     *((uint16_t*)wbuff) = SWPEND16(config->initScrollDistance);
     err |= iqs5xx_write(dev, ScrollInitDistance_adr, wbuff, 2);
+    LOG_ERR("ScrollInitDistance_adr: %i", err);
 
-    
     // Terminate transaction
     iqs5xx_write(dev, END_WINDOW, 0, 1);
+
+    k_mutex_unlock(&data->i2c_mutex);
 
     return err;
 }
@@ -313,6 +355,8 @@ static int iqs5xx_init(const struct device *dev) {
     int err = 0;
 
     data->dev = dev;
+
+    k_mutex_init(&data->i2c_mutex);
     
     // Configure data ready pin
 	gpio_pin_configure(config->dr_port, config->dr_pin, GPIO_INPUT | config->dr_flags);
