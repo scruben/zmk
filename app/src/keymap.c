@@ -81,6 +81,10 @@ static const char *zmk_keymap_layer_names[ZMK_KEYMAP_LAYERS_LEN] = {
 #if IS_ENABLED(CONFIG_ZMK_CONFIG)
 // Keymap from zmk_config
 struct zmk_config_keymap_item zmk_config_keymap[ZMK_CONFIG_MAX_REBOUND_KEYS];
+
+// Defaults TODO: uses a lot of mem
+struct zmk_behavior_binding zmk_config_keymap_defaults[ZMK_KEYMAP_LAYERS_LEN][ZMK_KEYMAP_LEN];
+
 #endif
 
 #if ZMK_KEYMAP_HAS_SENSORS
@@ -321,11 +325,12 @@ int keymap_listener(const zmk_event_t *eh) {
 
 #if IS_ENABLED(CONFIG_ZMK_CONFIG)
 void zmk_keymap_updated (struct zmk_config_field *field) {
+
+    // Reset key bindings
+    memcpy(zmk_keymap, zmk_config_keymap_defaults, sizeof(zmk_keymap));
     
     for(int key = 0; key < ZMK_CONFIG_MAX_REBOUND_KEYS; key++) {
         struct zmk_config_keymap_item *item = &zmk_config_keymap[key];
-        if(item->key == 0xFFFF)
-            continue;
 
         uint8_t layer = item->key & 0x0F;
         uint16_t key = item->key >> 4;
@@ -333,6 +338,10 @@ void zmk_keymap_updated (struct zmk_config_field *field) {
             continue;
 
         struct zmk_behavior_binding *bind = &zmk_keymap[layer][key];
+
+        if(item->key == 0xFFFF)
+            continue;
+
         if(zmk_config_keymap_conf_to_binding(bind, item) < 0) {
             LOG_ERR("Failed to update layer %i key %i: Unknown device id: %i\n", layer, key, item->device);
         }
@@ -342,10 +351,15 @@ void zmk_keymap_updated (struct zmk_config_field *field) {
 static int keymap_init () {
     // Initialize zmk_config keymap to 0xFF
     memset(zmk_config_keymap, 0xFF, sizeof(zmk_config_keymap));
+    // Copy defaults
+    memcpy(zmk_config_keymap_defaults, zmk_keymap, sizeof(zmk_keymap));
+
     // Load zmk_config keymap
     if(zmk_config_bind(ZMK_CONFIG_KEY_KEYMAP, zmk_config_keymap, sizeof(zmk_config_keymap), true, zmk_keymap_updated, NULL) == NULL) {
         LOG_ERR("Failed to bind keymap");
     }
+    // Trigger update
+    zmk_keymap_updated(NULL);
     return 0;
 }
 #endif
